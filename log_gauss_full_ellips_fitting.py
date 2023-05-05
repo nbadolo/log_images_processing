@@ -6,7 +6,9 @@ Created on Wed Oct 12 13:45:23 2022
 @author: nbadolo
 """
 
-
+"""
+## This function plot the gauss ellips fits of each star of the full log for a many given intensity values  
+"""
 
 
 
@@ -21,6 +23,7 @@ Created on Tue Oct 11 11:10:49 2022
 # ====================================================#
 # Pour les fits  gaussiens de tous les objets resolus #
 # ====================================================#
+
 
 
 #packages
@@ -88,7 +91,7 @@ def log_image(star_name, obsmod):
         file_I_star= fdir_star_fltr + fname1+'_I'+fname2+'_I.fits'
         file_PI_star= fdir_star_fltr +fname1+'_PI'+fname2+'_PI.fits'
         file_DOLP_star= fdir_star_fltr +fname1+'_DOLP'+fname2+'_DOLP.fits'
-         #file_AOLP_star= fdir_star_fltr + fname1+'_AOLP'+fname2+'_AOLP.fits'
+        #file_AOLP_star= fdir_star_fltr + fname1+'_AOLP'+fname2+'_AOLP.fits'
 
 
 
