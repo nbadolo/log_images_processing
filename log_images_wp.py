@@ -35,7 +35,8 @@ def log_image(star_name, obsmod):
     lst_fltr_star2 = []
     nDimfigj = [3, 4, 5]
     nDimfigk = [6, 7, 8]
-    # Parameters
+    
+    ## Parameters
     nDim = 1024
     nSubDim = 200 # plage de pixels que l'on veut afficher
     size = (nSubDim, nSubDim)
@@ -43,7 +44,7 @@ def log_image(star_name, obsmod):
     # nDimfigk = [6, 7, 8]
     # vmin0 = 3.5
     # vmax0 = 15
-    pix2mas = 6.8  #en mas/pix
+    pix2mas = 3.4  #en mas/pix
     x_min = -pix2mas*nSubDim//2
     x_max = pix2mas*(nSubDim//2-1)
     y_min = -pix2mas*nSubDim//2
@@ -55,9 +56,12 @@ def log_image(star_name, obsmod):
     Y *= pix2mas
     X_ *= pix2mas
     Y_ *= pix2mas
+    
+    
   
     X_step = 10
     X_step_ = 50
+    nx = ny = 20
     position = (nDim//2,nDim//2)
     size = (nSubDim, nSubDim)
     
@@ -90,36 +94,8 @@ def log_image(star_name, obsmod):
         nFrames = len(file_lst)
         file_lst2 = [file_I_star, file_PI_star, file_DOLP_star, file_AOLP_star]
         nFrames2 = len(file_lst2)
-        nDim = 1024
-        #nSubDim = 30 # plage de pixels que l'on veut afficher en ehelle lineaire
-        nSubDim = 100 # plage de pixels que l'on veut afficher en ehelle log
-        size = (nSubDim, nSubDim)
+      
         
-          # nDimfigj = [3, 4, 5]
-          # nDimfigk = [6, 7, 8]
-    
-        pix2mas = 3.4  # en mas/pix
-       
-        x_min = -pix2mas*nSubDim//2
-        x_max = pix2mas*(nSubDim//2-1)
-        y_min = -pix2mas*nSubDim//2
-        y_max = pix2mas*(nSubDim//2-1)
-        
-        x_min_log = -pix2mas*nSubDim//2
-        x_max_log = pix2mas*(nSubDim//2-1)
-        y_min_log = -pix2mas*nSubDim//2
-        y_max_log = pix2mas*(nSubDim//2-1)
-        X, Y= np.meshgrid(np.linspace(-nSubDim/2,nSubDim/2-1,nSubDim), np.linspace(-nSubDim/2,nSubDim/2-1,nSubDim))
-        X_, Y_= np.meshgrid(np.linspace(-nDim/2,nDim/2-1,nDim), np.linspace(-nDim/2,nDim/2-1,nDim))
-        
-        X *= pix2mas
-        Y *= pix2mas
-        X_ *= pix2mas
-        Y_ *= pix2mas
-        
-        X_step = 10
-        X_step_ = 50
-        nx = ny = 20
         mean_sub_v_arr = np.empty((nFrames,nSubDim//2-1))
         #mean_sub_v_arr_l =  np.empty((nFrames,nSubDim_l//2-1))
         
@@ -165,6 +141,7 @@ def log_image(star_name, obsmod):
               AOLP_2 = 0.5*np.arctan2(sub_v_arr[5], sub_v_arr[4])
               U2 = DOLP*np.cos(-(AOLP_2 + np.pi/2))
               V2 = DOLP*np.sin(-(AOLP_2 + np.pi/2))
+        
         print(Vmin)
         print(Vmax)
         # linear scale
@@ -205,13 +182,13 @@ def log_image(star_name, obsmod):
                       if i == 3:
                           plt.xlabel('Relative R.A.(mas)', size=10)
                   
-        plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
-                          '/plots/'+ star_name +'_' + fltr + '_lin' + '.pdf', 
-                          dpi=100, bbox_inches ='tight')
+        # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
+        #                   '/plots/no_psf/' + star_name + '_' + fltr + '_lin' + '.pdf', 
+        #                   dpi=100, bbox_inches ='tight')
         
-        plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
-                          '/plots/'+ star_name +'_' + fltr  + '_lin' + '.png', 
-                          dpi=100, bbox_inches ='tight')
+        # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
+        #                   '/plots/no_psf/' + star_name + '_' + fltr  + '_lin' + '.png', 
+        #                   dpi=100, bbox_inches ='tight')
         
         plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Intensities/linear_scale/'+ 
                     star_name +'_' + fltr + '_lin' + '.pdf', 
@@ -221,6 +198,8 @@ def log_image(star_name, obsmod):
                           dpi=100, bbox_inches ='tight')
         
         plt.tight_layout()
+        
+        
         
         
         # log scale        
@@ -241,7 +220,7 @@ def log_image(star_name, obsmod):
               elif i == 3 :
                   im_ = np.log10(sub_v_arr[1] + np.abs(np.min(sub_v_arr[1]) + 10))
                   plt.imshow(im_, cmap ='inferno', origin='lower', 
-                                    extent = [x_min_log , x_max_log, y_min_log , y_max_log])   
+                                    extent = [x_min , x_max, y_min , y_max])   
                   plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)       
                   q = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U2[::X_step,::X_step], V2[::X_step,::X_step], color='w', pivot='mid')
                   plt.quiverkey(q, X = 0.1, Y = 1.03, U = 0, label='', labelpos='E')                       
@@ -258,13 +237,13 @@ def log_image(star_name, obsmod):
                       if i == 3:
                           plt.xlabel('Relative R.A.(mas)', size=10)
                   
-        plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+ star_name +
-                          '/plots/'+ star_name +'_' + fltr + '_log' + '.pdf', 
-                          dpi=100, bbox_inches ='tight')
+        # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+ star_name +
+        #                   '/plots/'+ star_name +'_' + fltr + '_log' + '.pdf', 
+        #                   dpi=100, bbox_inches ='tight')
         
-        plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
-                          '/plots/'+ star_name +'_' + fltr + '_log' + '.png', 
-                          dpi=100, bbox_inches ='tight')
+        # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
+        #                   '/plots/'+ star_name +'_' + fltr + '_log' + '.png', 
+        #                   dpi=100, bbox_inches ='tight')
         
         plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Intensities/log_scale/'+ 
                     star_name +'_' + fltr  + '_log' + '.pdf', 
@@ -455,4 +434,4 @@ def log_image(star_name, obsmod):
     msg= 'reduction okay for ' + star_name
     return(msg)
 
-log_image('SW_Col', 'both')
+log_image('Y_Scl', 'both')
