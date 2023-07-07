@@ -8,7 +8,7 @@ Created on Fri May  6 11:13:32 2022
 
 """
 Code simplifié pour l'affichage simultané de toutes les étoiles(avec psf) de alone et both  ainsi que leur psf: flux 
-et profile radial d'intensité
+et profile radial d'intensité. Code okay!!!
 """
 
 import numpy as np
