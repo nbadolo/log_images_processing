@@ -8,7 +8,7 @@ Created on Fri May  6 11:13:32 2022
 
 """
 Code simplifié pour l'affichage simultané de toutes les étoiles(avec psf) de alone et both  ainsi que leur psf: flux 
-et profile radial d'intensité'
+et profile radial d'intensité
 """
 
 import numpy as np
@@ -25,8 +25,6 @@ import webbrowser
 #%% 
 #star_name = 'SW_Col'
 #obsmod = 'both'
-
-
 def log_image(star_name, obsmod):             
 #%%        
     
@@ -144,15 +142,19 @@ def log_image(star_name, obsmod):
         
         Vmin3 = np.empty((nFrames3))
         Vmax3 = np.empty((nFrames3))
-        
-        for z in (0,1) :
+        fsize = [0,1]       
+        n_fsize = len (fsize)
+        fltr_arr = np.empty(n_fsize, dtype = str)
+        for z in range(n_fsize) :
             
-        
             for i in range (nFrames2):
                   hdu = fits.open(file_lst2[i])[0]   
                   data2 = hdu.data   
                   i_v2 = data2[z,:,:]
-                  fltr = hdu.header.get('HIERARCH ESO INS3 OPTI5 NAME')     
+                  fltr1 = hdu.header.get('HIERARCH ESO INS3 OPTI5 NAME')   
+                  fltr2 = hdu.header.get('HIERARCH ESO INS3 OPTI6 NAME')
+                  fltr_arr[0] = fltr1
+                  fltr_arr[1] = fltr2
                   #print(fltr)                   
                   cutout2 = Cutout2D(i_v2, position=position, size=size)
                   zoom_hdu = hdu.copy()
@@ -202,7 +204,7 @@ def log_image(star_name, obsmod):
             
             # linear scale
             plt.clf()
-            fig = plt.figure(f'{star_name}' +'(' + f'{fltr}' + '_lin_Cam1' + ')')
+            fig = plt.figure(f'{star_name}' +'(' + f'{fltr_arr[z]}' + '_lin_Cam1' + ')')
             fig.set_size_inches(18.5, 10, forward = True)
             for t in range (nFrames2):
                   plt.subplot(3,3, t+1)
@@ -213,7 +215,7 @@ def log_image(star_name, obsmod):
                           vmin= np.min(sub_v_arr2[t]), vmax= np.max(sub_v_arr2[t]), extent = [x_min , x_max, y_min , y_max])
                           
                       plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                                    f'{star_name}' + '_' + f'{im_name_lst[t]}' + ' in '+ f'{fltr}' + ' band', color='w',
+                                    f'{star_name}' + '_' + f'{im_name_lst[t]}' + ' in '+ f'{fltr_arr[z]}' + ' band', color='w',
                                 fontsize='large', ha='center')
                       plt.colorbar(label='ADU', shrink = 0.6)
                 
@@ -224,7 +226,7 @@ def log_image(star_name, obsmod):
                       q = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U2[::X_step,::X_step], V2[::X_step,::X_step], color='w', pivot='mid')
                       plt.quiverkey(q, X = 0.1, Y = 1.03, U = 0, label='', labelpos='E')                 
                       plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                              'Pol. vect.' + ' in '+ f'{fltr}' + ' band', color='y',
+                              'Pol. vect.' + ' in '+ f'{fltr_arr[z]}' + ' band', color='y',
                                   fontsize='large', ha='center')
     
                           
@@ -238,7 +240,7 @@ def log_image(star_name, obsmod):
                         vmin= np.min(sub_v_arr3[j]), vmax= np.max(sub_v_arr3[j]), extent = [x_min , x_max, y_min , y_max])
                         
                     plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                                  f'{star_name}' + '_psf_' + f'{im_name_lst[j]}' + ' in '+ f'{fltr}' + ' band', color='w',
+                                  f'{star_name}' + '_psf_' + f'{im_name_lst[j]}' + ' in '+ f'{fltr_arr[z]}' + ' band', color='w',
                               fontsize='large', ha='center')
                     plt.colorbar(label='ADU', shrink = 0.6)
                 
@@ -249,7 +251,7 @@ def log_image(star_name, obsmod):
                     q = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U3[::X_step,::X_step], V3[::X_step,::X_step], color='w', pivot='mid')
                     plt.quiverkey(q, X = 0.1, Y = 1.03, U = 0, label='', labelpos='E')                 
                     plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                            'Pol. vect.' + ' in '+ f'{fltr}' + ' band', color='y',
+                            'Pol. vect.' + ' in '+ f'{fltr_arr[z]}' + ' band', color='y',
                                 fontsize='large', ha='center')
                     
                 if j == 0:
@@ -270,19 +272,19 @@ def log_image(star_name, obsmod):
                 if k == 0:
                        plt.ylabel(r'Intensity', size=10)
                 
-            # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
-            #                   '/plots/star_psf/'+ star_name +'_' + fltr + '_lin' + '.pdf', 
-            #                   dpi=100, bbox_inches ='tight')
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
+                              '/plots/star_psf/'+ star_name +'_' +  f'{fltr_arr[z]}' + '_lin' + '.pdf', 
+                              dpi=100, bbox_inches ='tight')
             
-            # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
-            #                   '/plots/star_psf/'+ star_name +'_' + fltr  + '_lin' + '.png', 
-            #                   dpi=100, bbox_inches ='tight')         
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
+                              '/plots/star_psf/'+ star_name +'_' +  f'{fltr_arr[z]}'  + '_lin' + '.png', 
+                              dpi=100, bbox_inches ='tight')         
             
-            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf/'+star_name+
-                 '_' + fltr + '_Cam1' + '.pdf', dpi=100, bbox_inches ='tight')
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf/linear_scale/'+star_name+
+                 '_' +  f'{fltr_arr[z]}' + '_lin' + '.pdf', dpi=100, bbox_inches ='tight')
             
-            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf/'+star_name+
-                              '_' + fltr + '_Cam1' + '.png', dpi=100, bbox_inches ='tight')
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf/linear_scale/'+star_name+
+                              '_' +  f'{fltr_arr[z]}' + '_lin' + '.png', dpi=100, bbox_inches ='tight')
             
             plt.tight_layout()      
                 
@@ -290,7 +292,7 @@ def log_image(star_name, obsmod):
                 
             # log scale
             plt.clf()
-            fig = plt.figure(f'{star_name}' +'(' + f'{fltr}' + '_log_Cam1' + ')')
+            fig = plt.figure(f'{star_name}' +'(' +  f'{fltr_arr[z]}' + '_log_Cam1' + ')')
             fig.set_size_inches(18.5, 10, forward = True)
             for o in range (nFrames2 -2):
                 plt.subplot(3,3, o+1)
@@ -302,7 +304,7 @@ def log_image(star_name, obsmod):
                           vmin = np.min(im_star), vmax= np.max(im_star), extent = [x_min , x_max, y_min , y_max])
                          
                     plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                                    f'{star_name}' + '_' + f'{im_name_lst[o]}' + ' in '+ f'{fltr}' + ' band', color='w',
+                                    f'{star_name}' + '_' + f'{im_name_lst[o]}' + ' in '+  f'{fltr_arr[z]}' + ' band', color='w',
                                 fontsize='large', ha='center')
                     plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)
         
@@ -315,7 +317,7 @@ def log_image(star_name, obsmod):
                     q = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U2[::X_step,::X_step], V2[::X_step,::X_step], color='w', pivot='mid')
                     plt.quiverkey(q, X = 0.1, Y = 1.03, U = 0, label='', labelpos='E')                       
                     plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                      'Pol. vect.' + ' in '+ f'{fltr}' + ' band', color='y',
+                      'Pol. vect.' + ' in '+  f'{fltr_arr[z]}' + ' band', color='y',
                                 fontsize='large', ha='center')        
         
         
@@ -333,7 +335,7 @@ def log_image(star_name, obsmod):
                               vmin = np.min(im_psf), vmax= np.max(im_psf), extent = [x_min , x_max, y_min , y_max])
                               
                         plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                                        f'{star_name}' + '_' + f'{im_name_lst[p]}' + ' in '+ f'{fltr}' + ' band', color='w',
+                                       f'{star_name}' + '_psf_'  + f'{im_name_lst[p]}' + ' in '+  f'{fltr_arr[z]}' + ' band', color='w',
                                     fontsize='large', ha='center')
                         plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)
     
@@ -346,7 +348,7 @@ def log_image(star_name, obsmod):
                         q = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U2[::X_step,::X_step], V2[::X_step,::X_step], color='w', pivot='mid')
                         plt.quiverkey(q, X = 0.1, Y = 1.03, U = 0, label='', labelpos='E')                       
                         plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-                          'Pol. vect.' + ' in '+ f'{fltr}' + ' band', color='y',
+                          'Pol. vect.' + ' in '+  f'{fltr_arr[z]}' + ' band', color='y',
                                     fontsize='large', ha='center')
             
                     if p == 0:
@@ -368,257 +370,24 @@ def log_image(star_name, obsmod):
                        plt.ylabel(r'Intensity in log$_{10}$ scale', size=10)
                 
         
-            # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+ star_name +
-            #                       '/plots/star_psf/'+ star_name +'_' + fltr + '_log' + '.pdf', 
-            #                       dpi=100, bbox_inches ='tight')
-                
-            # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
-            #                       '/plots/star_psf/'+ star_name +'_' + fltr + '_log' + '.png', 
-            #                       dpi=100, bbox_inches ='tight')
-                
-            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Intensities/log_scale/'+ 
-                            star_name +'_' + fltr  + '_log' + '.pdf', 
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+ star_name +
+                                  '/plots/star_psf/'+ star_name +'_' +  f'{fltr_arr[z]}' + '_log' + '.pdf', 
                                   dpi=100, bbox_inches ='tight')
-            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Intensities/log_scale/'+ 
-                            star_name +'_' + fltr + '_log' + '.png', 
+                
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+
+                                  '/plots/star_psf/'+ star_name +'_' +  f'{fltr_arr[z]}' + '_log' + '.png', 
+                                  dpi=100, bbox_inches ='tight')
+                
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf/log_scale/'+ 
+                            star_name +'_' +  f'{fltr_arr[z]}'  + '_log' + '.pdf', 
+                                  dpi=100, bbox_inches ='tight')
+            plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf/log_scale/'+ 
+                            star_name +'_' +  f'{fltr_arr[z]}' + '_log' + '.png', 
                                   dpi=100, bbox_inches ='tight')    
         
-        
-        
-        
-        
-        #     plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf2/'+star_name+
-        #                     '_' + fltr + vmin = np.min(im_star), vmax= np.max(im_star)'_Cam1' + '.pdf', 
-        #                     dpi=100, bbox_inches ='tight')
-            
-            
-        #     plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/star_psf2/'+star_name+
-        #                   '_' + fltr + '_Cam1' + '.png', 
-        #                     dpi=100, bbox_inches ='tight')
-        #      plt.tight_layout()
-        
-        msg1='reduction okay for '+ star_name+'_Cam1'
-        return(msg1)
-        print(msg1)
-
-    # for m in range(n_lst_fltr3):
-    #     fdir_star_fltr = fdir_star + lst_fltr3[m] +'/'
-    #     fdir_psf_fltr = fdir_psf + lst_fltr3[m] + '/'
-        
-    #     fname1 ='zpl_p23_make_polar_maps-ZPL_SCIENCE_P23_REDUCED'
-    #     fname2 ='-zpl_science_p23_REDUCED'
-    #     file_I_star = fdir_star_fltr + fname1+'_I'+fname2+'_I.fits'
-    #     file_PI_star = fdir_star_fltr +fname1+'_PI'+fname2+'_PI.fits'
-    #     file_DOLP_star = fdir_star_fltr +fname1+'_DOLP'+fname2+'_DOLP.fits'
-    #     file_AOLP_star= fdir_star_fltr + fname1+'_AOLP'+fname2+'_AOLP.fits'
+            plt.tight_layout()
     
-    #     file_I_psf = fdir_psf_fltr + fname1+'_I'+fname2+'_I.fits'
-    #     file_PI_psf = fdir_psf_fltr +fname1+'_PI'+fname2+'_PI.fits'
-    #     file_DOLP_psf = fdir_psf_fltr + fname1+'_DOLP'+fname2+'_DOLP.fits'
-    #     file_AOLP_psf = fdir_psf_fltr +fname1+'_AOLP'+fname2+'_AOLP.fits'
-      
-    #     file_lst = [file_I_star,file_PI_star,file_DOLP_star,file_AOLP_star,
-    #               file_I_psf,file_PI_psf,file_DOLP_psf,file_AOLP_psf]
+    #print('Au total, '+  str(n_lst_fltr3) +' étoiles ont une psf')    
+    return()
         
-    #     file_lst2_ = [file_I_star, file_PI_star, file_DOLP_star, file_AOLP_star]
-    #     file_lst3_ = [file_I_psf, file_PI_psf, file_DOLP_psf, file_AOLP_psf]          
-        
-    #     nFrames = len(file_lst)
-    #     nFrames2_ = len(file_lst2_)
-    #     nFrames3_ = len(file_lst3_)
-        
-    #     #mean_sub_v_arr = np.empty((nFrames,nSubDim//2-1))
-    #     mean_sub_v_arr2_ = np.empty((nFrames2,nSubDim//2-1))
-    #     mean_sub_v_arr3_ = np.empty((nFrames3,nSubDim//2-1))
-    #     #sub_v_arr = np.empty((nFrames,nSubDim,nSubDim))
-    #     sub_v_arr2_ = np.empty((nFrames2,nSubDim,nSubDim))
-    #     sub_v_arr3_ = np.empty((nFrames3,nSubDim,nSubDim))
-    #     im_name_lst = ['I','PI','DOLP','AOLP',
-    #                     'I','PI','DOLP','AOLP']
-    #     Vmin2_ = np.empty((nFrames3))
-    #     Vmax2_ = np.empty((nFrames3))
-        
-    #     Vmin3_ = np.empty((nFrames3))
-    #     Vmax3_ = np.empty((nFrames3))
-    
-      
-    
-    #     for i in range (nFrames2_):
-    #           hdu_ = fits.open(file_lst2_[i])[0]   
-    #           data2_ = hdu_.data   
-    #           i_v2_ = data2_[1,:,:]
-    #           fltr_ = hdu_.header.get('HIERARCH ESO INS3 OPTI6 NAME')
-              
-    #           cutout2_ = Cutout2D(i_v2_, position=position, size=size)
-    #           zoom_hdu = hdu_.copy()
-    #           sub_v2_ = cutout2_.data
-            
-    #           f = lambda r : sub_v2_[(R >= r-0.5) & (R < r+0.5)].mean()   
-    #           mean_sub_v_ = np.vectorize(f)(r) 
-            
-    #           mean_sub_v_arr2_[i] = mean_sub_v_ 
-    #           sub_v_arr2_[i] = sub_v2_
-    #           if np.any(np.min(sub_v_arr2_[i])<= 0): #i==3 or i==7:
-    #               Vmin2_[i] = np.min(sub_v_arr2_[i])
-    #               Vmax2_[i] = np.max(sub_v_arr2_[i])  
-    #           else:
-    #               Vmin2_[i] = np.min(np.log10(sub_v_arr2_[i]))
-    #               Vmax2_[i] = np.max(np.log10(sub_v_arr2_[i]))  
-         
-    #           U2_ = sub_v_arr2_[2]*np.cos(np.pi*sub_v_arr2_[3]/180)
-    #           V2_ = sub_v_arr2_[2]*np.sin(np.pi*sub_v_arr2_[3]/180)
-              
-              
-              
-    #     for i in range (nFrames3_):
-    #           hdu3_ = fits.open(file_lst3_[i])   
-    #           data3_ = hdu3_[0].data   
-    #           i_v3_ = data3_[1,:,:]
-           
-    #           cutout3_ = Cutout2D(i_v3_, position=position, size=size)
-    #           zoom_hdu3_ = hdu3_.copy()
-    #           sub_v3_ = cutout3_.data
-            
-    #           f = lambda r : sub_v3_[(R >= r-0.5) & (R < r+0.5)].mean()   
-    #           mean_sub_v3_ = np.vectorize(f)(r) 
-            
-    #           mean_sub_v_arr3_[i] = mean_sub_v3_
-    #           sub_v_arr3_[i] = sub_v3_
-    #           if np.any(np.min(sub_v_arr3_[i])<= 0): #i==3 or i==7:
-    #               Vmin3_[i] = np.min(sub_v_arr3_[i])
-    #               Vmax3_[i] = np.max(sub_v_arr3_[i])  
-    #           else:
-    #               Vmin3_[i] = np.min(np.log10(sub_v_arr3_[i]))
-    #               Vmax3_[i] = np.max(np.log10(sub_v_arr3_[i]))  
-         
-    #           U3_ = sub_v_arr3_[2]*np.cos(np.pi*sub_v_arr3_[3]/180)
-    #           V3_ = sub_v_arr3_[2]*np.sin(np.pi*sub_v_arr3_[3]/180)
-              
-    #           shap = np.shape(sub_v_arr2_)
-    #           #print(shap)
-    #     mean_sub_v_arr_ =  mean_sub_v_arr2_ + mean_sub_v_arr3_   
-    #     sub_v_arr_ = sub_v_arr2_ + sub_v_arr3_     
-    #     Vmin_ = Vmin2_ + Vmin3_
-    #     Vmax_ = Vmax2_ + Vmax3_
-        
-    #     #plt.figure(f'{star_name}' +'(' + f'{fltr_}' + '_Cam2' + ')', figsize=(18.5,10.5, forward = True))
-    #     plt.clf()
-    #     fig = plt.figure(f'{star_name}' +'(' + f'{fltr_}' + '_Cam2' + ')')
-    #     fig.set_size_inches(18.5, 10.5, forward = True)
-    #     for i in range (nFrames2_):
-    #           plt.subplot(3,3,i+1)
-    #           if i != 2 and i!= 3:
-    #               if np.any(np.min(sub_v_arr2_[i])<= 0):           
-    #                   plt.imshow(sub_v_arr2_[i], cmap='inferno', origin='lower',
-    #                   vmin=Vmin2_[i], vmax=Vmax2_[i], extent = [x_min , x_max, y_min , y_max])
-                      
-    #                   plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-    #                             f'{star_name}' + '_' + f'{im_name_lst[i]}', color='w',
-    #                         fontsize='large', ha='center')
-    #                   plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)
-    #               else:
-    #                    plt.imshow(np.log10(sub_v_arr2_[i]), cmap='inferno', origin='lower',
-    #                    vmin=Vmin2_[i], vmax=Vmax2_[i], extent = [x_min , x_max, y_min , y_max])
-                       
-    #                    plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-    #                              f'{star_name}' + '_' + f'{im_name_lst[i]}', color='w',
-    #                          fontsize='large', ha='center')
-    #                    plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)
-    #           else :
-    #               if i == 2:                  
-    #                   if np.any(np.min(sub_v_arr2_[1])<= 0):
-    #                       plt.imshow(sub_v_arr2_[1], cmap ='inferno', origin='lower',vmin=Vmin2_[1], 
-    #                                     vmax= Vmax2_[1], extent = [x_min , x_max, y_min , y_max])   
-    #                       plt.colorbar(label='ADU in log$_{10}$ scale')       
-    #                       q = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U2_[::X_step,::X_step], V2_[::X_step,::X_step])
-    #                       plt.quiverkey(q, X = 0.1, Y = 1.03, U = 0, label='', labelpos='E')
-    #                       plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-    #                         f'{im_name_lst[1]}'+ '_&_Pol. vect', color='w',
-    #                            fontsize='large', ha='center')
-    #                   else :
-    #                       plt.imshow(np.log10(sub_v_arr2_[1]), cmap ='inferno', origin='lower',vmin = Vmin2_[1], 
-    #                                      vmax = Vmax2_[1], extent = [x_min , x_max, y_min , y_max])   
-    #                       plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)       
-    #                       q = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U2_[::X_step,::X_step], V2_[::X_step,::X_step])
-    #                       plt.quiverkey(q, X = 0.1, Y = 1.03, U = 0, label='', labelpos='E')
-    #                       plt.text(size[0]//10, 2*pix2mas*size[1]//6.,
-    #                         f'{im_name_lst[1]}'+ '_&_Pol. vect', color='w',
-    #                             fontsize='large', ha='center')
-        
-    #           if i == 0:
-    #               plt.ylabel('Relative Dec.(mas)', size=10)   
-                          
-    #     for j in range (len(nDimfigj)):   
-    #         plt.subplot(3,3,(nDimfigj[j] + 1))
-    #         if j == 2:
-    #             if np.any(np.min(sub_v_arr3_[1])<= 0):
-    #                 plt.imshow(sub_v_arr3_[1], cmap ='inferno', origin='lower',vmin=Vmin3_[1], 
-    #                                     vmax=Vmax3_[1], extent = [x_min , x_max, y_min , y_max])   
-    #                 plt.colorbar(label='ADU in log$_{10}$ scale')       
-    #                 q_ = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U3_[::X_step,::X_step], V3_[::X_step,::X_step])
-    #                 plt.quiverkey(q_, X = 0.1, Y = 1.03, U = 0.01, label='deg vect. n. scale 0.03', labelpos='E')
-    #                 plt.text(size[0]//10, 2*pix2mas*size[1]//6., 
-    #                            '_psf_' + f'{im_name_lst[1]}'+ '_&_Pol. vect', color='w',
-    #                                     fontsize='large', ha='center')
-    #             else :
-    #                 plt.imshow(np.log10(sub_v_arr3_[1]), cmap ='inferno', origin='lower',vmin=Vmin3_[1], 
-    #                                      vmax=Vmax3_[1], extent = [x_min , x_max, y_min , y_max])   
-    #                 plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)       
-    #                 q_ = plt.quiver(X[::X_step,::X_step],Y[::X_step,::X_step],U3_[::X_step,::X_step], V3_[::X_step,::X_step])
-    #                 plt.quiverkey(q_, X = 0.1, Y = 1.03, U = 0.01, label='deg vect. n. scale 0.03', labelpos='E')
-                        
-    #                 plt.text(size[0]//10, 2*pix2mas*size[1]//6., 
-    #                      '_psf_' + f'{im_name_lst[1]}'+ '_&_Pol. vect', color='w',
-    #                               fontsize='large', ha='center')
-    #         else:
-    #             if np.any(np.min(sub_v_arr3_[j])<= 0):           
-    #                 plt.imshow(sub_v_arr3_[j], cmap='inferno', origin='lower',
-    #                 vmin=Vmin3_[j], vmax=Vmax3_[j], extent = [x_min , x_max, y_min , y_max])
-                      
-    #                 plt.text(size[0]//10, 2*pix2mas*size[1]//6., 
-    #                 f'{star_name}' + '_psf_' + f'{im_name_lst[j]}', color='w',
-    #                           fontsize='large', ha='center')
-    #                 plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)
-    #             else:
-    #                 plt.imshow(np.log10(sub_v_arr3_[j]), cmap='inferno', origin='lower',
-    #                 vmin=Vmin3_[j], vmax=Vmax3_[j], extent = [x_min , x_max, y_min , y_max])
-                       
-    #                 plt.text(size[0]//10, 2*pix2mas*size[1]//6., 
-    #                 f'{star_name}' + '_psf_' + f'{im_name_lst[j]}', color='w',
-    #                             fontsize='large', ha='center')
-    #                 plt.colorbar(label='ADU in log$_{10}$ scale', shrink = 0.6)
-                    
-    #         if j == 0:
-    #             plt.ylabel('Relative Dec.(mas)', size=10)
-    #             plt.xlabel('Relative R.A.(mas)', size=10)
-    #         else:
-    #             plt.xlabel('Relative R.A.(mas)', size=10)         
-                           
-    #     for k in range(len(nDimfigk)):      
-    #           plt.subplot(3,3,nDimfigk[k] + 1)
-    #           plt.plot(r_mas, np.log10(mean_sub_v_arr2_[k]), color='darkorange',
-    #                   linewidth = 2, label= f'{star_name}') 
-    #           plt.plot(r_mas, np.log10(mean_sub_v_arr3_[k]),color='purple',
-    #                   linewidth = 2, label = f'{star_name}' + '_psf') 
-    #           plt.legend(loc=0) 
-    #           plt.xlabel('r (mas)', size=10) 
-    #           if k == 0: 
-    #               plt.ylabel(r'Intensity in log$_{10}$ scale', size=10)
-        
-    #     plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/log/' + star_name +
-    #                     '/plots/'+ star_name + '_' + fltr_ + '_Cam2' + '.pdf', 
-    #                     dpi = 100, bbox_inches ='tight')
-        
-        
-    #     plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/log/'+ star_name +
-    #                     '/plots/'+ star_name +'_' + fltr_ + '_Cam2' + '.png', 
-    #                     dpi = 100, bbox_inches ='tight')
-    #     plt.tight_layout()
-    
-    # msg2= 'reduction okay for ' + star_name +'_Cam2'
-
-    # msg= 'reduction okay for '+ star_name
-    # print(msg2)
-    # return(msg) 
-    
-log_image('SW_Col', 'both')    
+#log_image('SW_Col', 'both')    

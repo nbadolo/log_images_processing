@@ -146,7 +146,7 @@ def log_image(star_name, obsmod):
         Vmin3 = np.zeros((2,nFrames3))
         Vmax3 = np.zeros((2,nFrames3))
         
-        for z in (0,1) :
+        for z in [0,1] :
             
         
             for i in range (nFrames2):
@@ -158,12 +158,12 @@ def log_image(star_name, obsmod):
                   cutout2 = Cutout2D(i_v2, position=position, size=size)
                   zoom_hdu = hdu.copy()
                   sub_v2 = cutout2.data
+                  sub_v_arr2[z][i] = sub_v2
                 
                   f2 = lambda r : sub_v2[(R >= r-0.5) & (R < r+0.5)].mean()   
-                  mean_sub_v2 = np.vectorize(f2)(r) 
-                
+                  mean_sub_v2 = np.vectorize(f2)(r)                
                   mean_sub_v_arr2[z][i] = mean_sub_v2 
-                  sub_v_arr2[z][i] = sub_v2
+                  
                       
                   DOLP_star = sub_v_arr2[z][2]
                   ii = (sub_v_arr2[z][4] == 0)
@@ -175,19 +175,19 @@ def log_image(star_name, obsmod):
                   V2 = DOLP_star*np.sin(-(AOLP_2_star + np.pi/2))
                   
             for I in range (nFrames3):
-                  hdu3 = fits.open(file_lst3[I])   
-                  data3 = hdu3[0].data   
+                  hdu3 = fits.open(file_lst3[I])[0]   
+                  data3 = hdu3.data   
                   i_v3 = data3[z,:,:]
                
                   cutout3 = Cutout2D(i_v3, position=position, size=size)
                   zoom_hdu3 = hdu3.copy()
                   sub_v3 = cutout3.data
+                  sub_v_arr3[z][i] = sub_v3
                 
                   f3 = lambda r : sub_v3[(R >= r-0.5) & (R < r+0.5)].mean()   
-                  mean_sub_v3 = np.vectorize(f3)(r) 
-                  
+                  mean_sub_v3 = np.vectorize(f3)(r)                  
                   mean_sub_v_arr3[z][I] = mean_sub_v3 
-                  sub_v_arr3[z][i] = sub_v3
+                  
                 
                   DOLP_psf = sub_v_arr3[z][2]
                   II = (sub_v_arr3[z][4] == 0)
