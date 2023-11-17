@@ -55,31 +55,23 @@ def EllRadialProf(x0, y0, a, b, theta, im, num):
      
     returns :
     ----------
-     x0 :
+     x0, y0 : cordinates of the centre of the ellipse
          
-     y0 :
      
-     x1 :
+     x1, y1 : cordinates of first intersection of theta orientation and ellipse
      
-     y1 :
+     x1_, y1_: cordinates of seconde  intersection of theta orientation and ellipse
          
-     x2 :
-         
-     y2 :
-         
-     z :
+     x2, y2 : cordinates of first intersection of (theta + pi/2) orientation and ellipse
+     
+     x2_, y2_ : cordinates of seconde  intersection of (theta + pi/2) orientation and ellipse
+     
+     z : used image
           
      zi1 :
           
      zi2 :
-          
-     x1_
-    
-     y1_:
-        
-     x2_:
-        
-     y2_ :
+            
         
      zi1_ :
          
@@ -131,15 +123,15 @@ def EllRadialProf(x0, y0, a, b, theta, im, num):
     zi2_ = scipy.ndimage.map_coordinates(z, np.vstack((xx_,yy_)))
     #-- Plot...
     
-    return(x0, y0, x1, y1, x2, y2,z, zi1, zi2, x1_, y1_, x2_, y2_, zi1_, zi2_)
+    return(x0, y0, x1, y1, x2, y2, z, zi1, zi2, x1_, y1_, x2_, y2_, zi1_, zi2_)
 
 
 
 
 
-#=======================================================================
-#Fonction de deconvolution des cartes reduites du log agb mises à part
-#======================================================================
+#============================================================================#
+#Fonction de deconvolution des cartes reduites du large_log agb mises à part #
+#============================================================================#
 
 
 def Margaux_RL_deconv(science_im, PSF_im, nb_iter):
@@ -201,6 +193,7 @@ def Margaux_RL_deconv(science_im, PSF_im, nb_iter):
 # =============================================================================
 
 def LinOrientation(image, Dim):
+    
     """
     inputs:
         image : l'image dont on veut extraire les points
@@ -226,7 +219,56 @@ def LinOrientation(image, Dim):
     return(alpha_rad,alpha_deg )
 
 
+# =============================================================================
+# Suppression de pixels chauds dans une image Fits
+# =============================================================================
 
+def DelHotPix(image) :
+    
+    """
+    Cette fonction permet supprimer les pixels chauds d'une image Fits'
+    
+    inputs:
+        image : image that we want to extract the hots pixels
+        
+        
+    outputs : final image without the hots pixels 
+    
+    """
+    
+    # Charger le cube FITS
+    hdulist = fits.open(image)
+    cube = hdulist[0].data
+
+    # Supprimer les pixels chauds en soustrayant la médiane de chaque couche
+    for i in range(cube.shape[0]):
+        cube[i] -= np.nanmedian(cube[i])
+    #Normaliser chaque couche du cube en divisant par la valeur maximale
+    # maxi = np.max(cube, axis=0)
+    # for i in range(cube.shape[0]):
+    #     cube[i] /= maxi
+
+    # # Ajuster les valeurs pour qu'elles soient un peu plus lumineuses que l'arrière-plan
+    # cube = cube * 0.9 + 0.1
+
+    # # Mettre à zéro les valeurs négatives
+    # cube[cube < 0] = 0
+
+    # # Limiter les valeurs supérieures à 1 à 1
+    # cube[cube > 1] = 1
+
+    # # Appliquer une correction gamma en prenant la racine carrée
+    # cube = np.sqrt(cube)
+
+    # # Étendre l'échelle des valeurs de 0-255
+    # cube *= 255
+
+    # # Sauvegarder le cube FITS modifié
+    hdulist[0].data = cube
+    hdulist.writeto('cube_modifie.fits', overwrite=True)
+    
+    return(hdulist)
+    hdulist.close()
 
 # =============================================================================
 # Sauvegarde et ouverture d'un fichier fit

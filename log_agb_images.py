@@ -7,8 +7,8 @@ Created on Fri May  6 11:13:32 2022
 """
 
 """
-Code simplifié pour l'affichage simultané de toutes les étoiles(avec psf) de alone et both  ainsi que leur psf: flux 
-et profile radial d'intensité'
+Code simplifié (ancienne version) pour l'affichage simultané de toutes les étoiles(avec psf) de alone et both  ainsi que leur psf: flux 
+et profile radial d'intensité. le petit repertoire. 
 """
 
 import numpy as np
@@ -25,7 +25,7 @@ import webbrowser
 #%% 
 def log_image(star_name, obsmod):
 #%%        
-    fdir= '/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/' +star_name+ '/'
+    fdir= '/home/nbadolo/Bureau/Aymard/Donnees_sph/log/' +star_name+ '/'
     fdir_star = fdir + 'star/'+obsmod+ '/' 
     fdir_psf = fdir +'psf/'+obsmod+ '/'
     lst_fltr_star = os.listdir(fdir_star)
