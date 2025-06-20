@@ -74,7 +74,7 @@ def log_image(star_name, obsmod):
           #,file_I_psf,file_PI_psf,file_DOLP_psf,file_AOLP_psf]
           
         nFrames = len(file_lst)
-        lst_Frame_name = ['Intensity', 'Pol. xxxxxxxxxxxxIntensity'] 
+        lst_Frame_name = ['Intensity', 'Pol. Intensity'] 
 
     #parameters
         nDim=1024
@@ -82,7 +82,7 @@ def log_image(star_name, obsmod):
         size = (nSubDim, nSubDim)
         nDimfigj=[9,10,11]
         nDimfigk=[0,1,2]
-        lst_threshold = [0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1]
+        lst_threshold = [0.0095, 0.01, 0.015, 0.02, 0.03, 0.05, 0.075, 0.1]
         n_threshold = len(lst_threshold)
         vmin0 = 3.5
         vmax0 = 15
@@ -306,4 +306,4 @@ def log_image(star_name, obsmod):
     
     #return()
 
-#log_image('SW_Col', 'both')
+log_image('SW_Col', 'both')

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """
 Created on Fri Nov 18 15:06:04 2022
 
 @author: nbadolo
 """
-
 import numpy as np
 from numpy import nan
 import os
@@ -28,11 +28,12 @@ from matplotlib.pyplot import Figure, subplot
 #%% 
 ##parameters
 nDim=1024
-nSubDim = 200 # plage de pixels que l'on veut afficher
+nSubDim = 100 # plage de pixels que l'on veut afficher
 size = (nSubDim, nSubDim)
 nDimfigj=[9,10,11]
 nDimfigk=[0,1,2]
 lst_threshold = [0.01, 0.015, 0.02, 0.03, 0.05, 0.07, 0.1]
+strs = [str(x*100) + ' %' for x in lst_threshold]
 n_threshold = len(lst_threshold)
 pix2mas = 3.4  #en mas/pix
 x_min = -pix2mas*nSubDim//2
@@ -41,9 +42,16 @@ y_min = -pix2mas*nSubDim//2
 y_max = pix2mas*(nSubDim//2-1)
 position = (nDim//2,nDim//2)
 size = (nSubDim, nSubDim)
+
+
+txt_folder = 'sphere_txt_file'
+file_path = '/home/nbadolo/Bureau/Aymard/Donnees_sph/' + txt_folder + '/'
+file_name = 'no_common_data_lst.txt'
+no_common_data_lst = open("{}/{}".format(file_path, file_name), "w")
+no_common_data_lst.write("{}\n".format('Star name', 'Mode'))
 #%%
 def log_image(star_name, obsmod):   
-#%%        
+        
     fdir= '/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+ '/'
     fdir_star = fdir + 'star/'+obsmod+ '/' 
     fdir_psf = fdir +'psf/'+obsmod+ '/'
@@ -81,7 +89,13 @@ def log_image(star_name, obsmod):
     n_lst_fltr3 = len(lst_fltr3)
     
     # begining of elements 
-    if n_lst_fltr3 != 0 :
+    if n_lst_fltr3 == 0:
+           print( f'No common data for {star_name} and his psf')
+           no_common_data_lst.write("{}\n".format(f'{star_name}', obsmod))
+           return(f'{star_name}', obsmod) # le recupere le nom de l'étoile si pas de psf
+           pass
+    else :
+        
         for l in range(n_lst_fltr3):
             fdir_star_fltr = fdir_star + lst_fltr3[l] +'/'
             fdir_psf_fltr = fdir_psf + lst_fltr3[l] + '/'
@@ -301,6 +315,7 @@ def log_image(star_name, obsmod):
                     t = np.linspace(0, 2*pi, nSubDim)
                               
                     def cost(params_p):
+
                         
                         x0p, y0p, ap, bp, thetap = params_p
                         #coords = draw.disk((y0, x0), r, shape=image.shape)
@@ -332,51 +347,32 @@ def log_image(star_name, obsmod):
                         #return Ell_rot.ravel() # .ravel permet de passer de deux dimension à une seule
                         Ell_rot_psf_arr[psf_i][psf_j][:,psf_k] = Ell_rot_psf[:,psf_k] 
                                   
-                                  
-                  # plots   
-                              
-                # plt.figure('full image and all the  contours' + f'{strs[j]}')
-                # plt.clf()
-                # plt.imshow(np.log10(sub_v_star_arr[i]+np.abs(np.min(sub_v_star_arr[i]))+10), cmap ='inferno', vmin=Vmin_star_r[i][j], vmax=Vmax_star_r[i][j], origin='lower')
-                # #plt.plot( u + Ell_rot[0,:] , v + Ell_rot[1,:],'darkorange' ) # rotated ellipse
-                             
-                # plt.plot(Ell_rot_star_arr[i][0][0,:], Ell_rot_star_arr[i][0][1,:])
-                             
-                             
-                # plt.show()
-                # #plt.title('full image and all the  contours at ' + ' for ' + f'{lst_Frame_name[i]}'+' of '+ f'{star_name}', fontsize=10)
-                # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/log/'+ star_name +'/plots/fits/log_scale/fully_automatic/' +'full_image_and_all_the_contours' +'_for_' + f'{lst_Frame_name[i]}' + '.pdf', 
-                #                          dpi=100, bbox_inches ='tight')
-                           
-                           
-                # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/log/'+ star_name +'/plots/fits/log_scale/fully_automatic/' +'full_image_and_all_the_contours'  + '_for_' + f'{lst_Frame_name[i]}' + '.png', 
-                #                  dpi=100, bbox_inches ='tight')
-                # plt.tight_layout()
+
                 
-                
-            # ========================================================#
-            # For the radial profile at a given orientation, theta_f  #     
-            # ========================================================# 
+
+                                    # ========================================================#
+                                    # For the radial profile at a given orientation, theta_f  #     
+                                    # ========================================================# 
             
             
             
-        # star
+          ## star
         im_s  = np.log10(sub_v_star_arr[0] + np.abs(np.min(sub_v_star_arr[0])) + 10) # intensity for the radial profile 
         imp_s = np.log10(sub_v_star_arr[1] + np.abs(np.min(sub_v_star_arr[1])) + 10) # polarized  intensity for the radial profile 
         x0_s, y0_s, x1_s, y1_s, x2_s, y2_s,z_s, zi1_s, zi2_s, xx1_s, yy1_s, xx2_s, yy2_s, zzi1_s, zzi2_s = erp(par_star_arr[0][0][0], par_star_arr[0][0][1], par_star_arr[0][0][2], par_star_arr[0][0][3], par_star_arr[0][0][4], im_s, 100)
-        x0p_s, y0p_s, x1p_s, y1p_s, x2p_s, y2p_s,zp_s, zi1p_s, zi2p_s, xx1p_s, yy1p_s, xx2p_s, yy2p_s, zzi1p_s, zzi2p_s = erp(par_star_arr[1][0][0], par_star_arr[1][0][1], par_star_arr[1][0][2], par_star_arr[1][0][3], par_star_arr[1][0][4], imp_s, 100)
+        x0p_s, y0p_s, x1p_s, y1p_s, x2p_s, y2p_s, zp_s, zi1p_s, zi2p_s, xx1p_s, yy1p_s, xx2p_s, yy2p_s, zzi1p_s, zzi2p_s = erp(par_star_arr[1][0][0], par_star_arr[1][0][1], par_star_arr[1][0][2], par_star_arr[1][0][3], par_star_arr[1][0][4], imp_s, 100)
         
-        #psf    
+          ##psf    
         im_p  = np.log10(sub_v_psf_arr[0] + np.abs(np.min(sub_v_psf_arr[0])) + 10) # intensity for the radial profile 
         imp_p = np.log10(sub_v_psf_arr[1] + np.abs(np.min(sub_v_psf_arr[1])) + 10) # polarized  intensity for the radial profile 
         x0_p, y0_p, x1_p, y1_p, x2_p, y2_p,z_p, zi1_p, zi2_p, xx1_p, yy1_p, xx2_p, yy2_p, zzi1_p, zzi2_p = erp(par_psf_arr[0][0][0], par_psf_arr[0][0][1], par_psf_arr[0][0][2], par_psf_arr[0][0][3], par_psf_arr[0][0][4], im_p, 100)
-        x0p_p, y0p_p, x1p_p, y1p_p, x2p_p, y2p_p,zp_p, zi1p_p, zi2p_p, xx1p_p, yy1p_p, xx2p_p, yy2p_p, zzi1p_p, zzi2p_p = erp(par_psf_arr[1][0][0], par_psf_arr[1][0][1], par_psf_arr[1][0][2], par_psf_arr[1][0][3], par_psf_arr[1][0][4], imp_p, 100)
+        x0p_p, y0p_p, x1p_p, y1p_p, x2p_p, y2p_p, zp_p, zi1p_p, zi2p_p, xx1p_p, yy1p_p, xx2p_p, yy2p_p, zzi1p_p, zzi2p_p = erp(par_psf_arr[1][0][0], par_psf_arr[1][0][1], par_psf_arr[1][0][2], par_psf_arr[1][0][3], par_psf_arr[1][0][4], imp_p, 100)
         
         
         ##les plots
-        # plt.figure('profiles comparison')
-        # plt.clf()
-        # #plt.subplot(3,2,1) # De l'intensité
+        fig = plt.figure('profiles comparison')
+        plt.clf()
+        #plt.subplot(3,2,1) # De l'intensité
         
         # plt.imshow(z_s, cmap ='inferno', vmin = Vmin_star_r[0][0], vmax = Vmax_star_r[0][0], origin='lower') # full image of intensity
         # plt.plot(Ell_rot_star_arr[0][0][0,:] , Ell_rot_star_arr[0][0][1,:]) # ellipse de l'intensité à 10% de l'intensité max
@@ -405,7 +401,6 @@ def log_image(star_name, obsmod):
     
     
         # im4 = plt.subplot(2,1,2)
-    
         # # assign plot to a new object
         # im = im4.imshow(img2, aspect='equal')
         
@@ -419,13 +414,17 @@ def log_image(star_name, obsmod):
         #t1 = np.arange(0.0, 3.0, 0.01)
         
         # pour les profiles radiaux
+        fig.set_size_inches(18.5, 10, forward = True)
         ax1 = plt.subplot(212)
         ax1.margins(0.05)           # Default margin is 0.05, value 0 means fit
-        line1, = ax1.plot(zi1p_s, label= 'star') # profile radiale de l'intensité polarisée suivant le demi petit axe(star) à theta
-        line2, = ax1.plot(zi1p_p, label= 'psf') # profile radiale de l'intensité polarisée suivant le demi petit axe  à theta
-        ax1.legend(handles=[line1, line2])
+        line11, = ax1.plot(zi1p_s, label= 'star') # profile radiale de l'intensité polarisée suivant le demi petit axe(star) à theta
+        line22, = ax1.plot(zi1p_p, label= 'psf') # profile radiale de l'intensité polarisée suivant le demi petit axe  à theta
+        # line1 = 
+        # line2 =
+        #ax1.legend(handles=[line1, line2])
         ax1.set_xlabel('r(pix)')
         ax1.set_ylabel('I (hdu)')
+        ax1.set_title(f'{star_name}')
         
         # pour l'etoile
         ax2 = plt.subplot(221)
@@ -436,12 +435,12 @@ def log_image(star_name, obsmod):
         ax2.plot([x0p_s, x1p_s], [y0p_s, y1p_s], 'ro-')  # tracé du demi-grand axe de l'ellipse
         ax2.plot([x0p_s, x2p_s], [y0p_s, y2p_s], 'ro-')   # tracé du demi petit axe de l'ellipse
         #ax2.set_xlim(-nSubDim/2 +x_sf, nSubDim/2+x_sf) 
-        #ax2.set_xlim(0, nSubDim) 
+        ax2.set_xlim(0, nSubDim) 
         ax2.set_yticks([0, nSubDim/2, nSubDim])
-        ax2.set_xlabel('x(pix)')
-        ax2.set_ylabel('y(pix)')
+        ax2.set_xlabel('x(pix)', fontsize = 24)
+        ax2.set_ylabel('y(pix)', fontsize = 24)
         cbar = plt.colorbar(im2)
-        #plt.colorbar(label='ADU', location ='top', shrink = 0.6)
+        #plt.colorbar(label='ADU', shrink = 0.6)
         ax2.set_title('star') 
         
         # pour la psf
@@ -454,12 +453,12 @@ def log_image(star_name, obsmod):
         ax3.plot([x0p_p, x2p_p], [y0p_p, y2p_p], 'ro-')   # tracé du demi petit axe de l'ellipse
         ax3.set_xlim(0, nSubDim) 
         ax3.set_yticks([0, nSubDim/2, nSubDim]) # pour fixer lécart de la graduation sur les axes
-        #ax3.set_xlabel('l') 
+        ax3.set_xlabel('x(pix)', fontsize = 24) 
+        #ax3.set_ylabel('y(pix)', fontsize = 12)
         ax3.set_ylim(0, nSubDim) 
         cbar = plt.colorbar(im3)
         ax3.set_title('psf')
         
-        plt.show()
             
         # plt.subplot(3,2,3) # pour l'intensité de la psf
         # plt.imshow(z_p, cmap ='inferno', vmin = np.min(z_s), vmax = np.max(z_s), origin='lower') # full image of intensity
@@ -499,17 +498,18 @@ def log_image(star_name, obsmod):
         # plt.title('radial profile of polarised intensity demi petit axe')
         # plt.xlabel('r (pix)', size=10) 
         # plt.ylabel(r'Intensity in log$_{10}$ scale', size=10)
-        # plt.show()
-        # plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+'/plots/radial/radial_profile_at_a_given_orientation.pdf', 
-        #                dpi=100, bbox_inches ='tight')
+       
+        plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+'/plots/radial/radial_profile_at_a_given_orientation.pdf', 
+                       dpi=100, bbox_inches ='tight')
         plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log/'+star_name+'/plots/radial/radial_profile_at_a_given_orientation.png', 
                 dpi=100, bbox_inches ='tight')
         
         plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/radial_profile_at_given_orientation/'+ star_name +'radial_profile_at_a_given_orientation.pdf', dpi=100, bbox_inches ='tight')
         plt.savefig('/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/radial_profile_at_given_orientation/'+ star_name +'radial_profile_at_a_given_orientation.png', dpi=100, bbox_inches ='tight')
         plt.tight_layout()
+        plt.show()
     
-    
-star_name  = 'GY_Aql'
-obsmod = 'alone'
-log_image(star_name, obsmod)
+
+# star_name  = 'SW_Col'
+# obsmod = 'both'
+# star=log_image(star_name, obsmod)

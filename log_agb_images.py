@@ -568,4 +568,4 @@ def log_image(star_name, obsmod):
     print(msg2)
     return(msg) 
     
-#log_image('SW_Col', 'both')
+log_image('SW_Col', 'both')

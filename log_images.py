@@ -390,4 +390,4 @@ def log_image(star_name, obsmod):
     #print('Au total, '+  str(n_lst_fltr3) +' étoiles ont une psf')    
     return()
         
-#log_image('SW_Col', 'both')    
+log_image('SW_Col', 'both')    
