@@ -37,25 +37,6 @@ from skimage import measure, draw
 import pandas as pd
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-# Fonction pour calculer le profil radial moyen d'une image 2D
-# en fonction du pixel le plus brillant.
-# Cette fonction est utilisée pour analyser la distribution de l'intensité
-def radial_profile(image):
-    """Calcule le profil radial moyen d'une image 2D en fonction du pixel le plus brillant."""
-    y, x = np.indices(image.shape)
-    max_intensity_index = np.unravel_index(np.argmax(image), image.shape)
-    center_y, center_x = max_intensity_index
-    center = np.array([center_x, center_y])
-    radius = np.sqrt((x - center[0])**2 + (y - center[1])**2)
-    radius = radius.astype(int)
-    radial_sum = np.bincount(radius.ravel(), weights=image.ravel())
-    radial_count = np.bincount(radius.ravel())
-    radial_mean = radial_sum / radial_count
-    nans = np.isnan(radial_mean)
-    not_nans = ~nans
-    radial_mean[nans] = np.interp(np.flatnonzero(nans), np.flatnonzero(not_nans), radial_mean[not_nans])
-    return radial_mean
-
 # Fonction principale pour l'analyse morphologique des images polarisées
 def log_image(folder_name, star_name, obsmod):
     # Répertoires et paramètres
@@ -190,31 +171,12 @@ def log_image(folder_name, star_name, obsmod):
             diameter_mas = 2 * a_f * pix2mas
             diameter_minor_mas = 2 * b_f * pix2mas
 
-            # results.append({
-            #     'star': star_name,
-            #     'filter': fltr_arr[z],
-            #     'frame_type': f'Pol_Intensity_{z}',
-            #     'diameter_major_mas': diameter_mas,
-            #     'diameter_minor_mas': diameter_minor_mas,
-            #     'center_x_mas': x_centroid_mas,
-            #     'center_y_mas': y_centroid_mas,
-            #     'theta_deg': np.degrees(theta_f),
-            #     'fit_cost': best_cost,
-            #     'threshold': best_threshold
-            # })
-            diameter_mas = 2 * a_f * pix2mas
-            diameter_minor_mas = 2 * b_f * pix2mas
-            diameter_err_mas = 2 * pix2mas  # erreur simple : ±1 pixel sur chaque demi-axe
-            diameter_minor_err_mas = 2 * pix2mas
-
             results.append({
                 'star': star_name,
                 'filter': fltr_arr[z],
                 'frame_type': f'Pol_Intensity_{z}',
                 'diameter_major_mas': diameter_mas,
-                'diameter_major_err_mas': diameter_err_mas,
                 'diameter_minor_mas': diameter_minor_mas,
-                'diameter_minor_err_mas': diameter_minor_err_mas,
                 'center_x_mas': x_centroid_mas,
                 'center_y_mas': y_centroid_mas,
                 'theta_deg': np.degrees(theta_f),
@@ -262,26 +224,6 @@ def log_image(folder_name, star_name, obsmod):
             plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10)
             plt.savefig(os.path.join(outdir, f'unique_max_contour_for_Pol_Intensity_{star_name}_{obsmod}_{fltr_arr[z]}_{z}.png'), dpi=100, bbox_inches='tight')
             #plt.show()
-            plt.close()
-
-            # Calcul du profil radial moyen normalisé
-            profile = radial_profile(sub_v)
-            profile_norm = profile / np.max(profile)
-            r_pix = np.arange(len(profile_norm))
-            r_mas = r_pix * pix2mas
-
-            # Plot du profil radial moyen
-            plt.figure(figsize=(6, 5))
-            plt.plot(r_mas, profile_norm, color='#1f77b4', lw=2, label='Radial profile')
-            plt.axhline(best_threshold, color='#d62728', ls='--', lw=2, label=f'$h$ (seuil optimal) = {best_threshold:.3f}')
-            plt.xlabel('Separation (mas)', fontsize=13, fontweight='bold')
-            plt.ylabel('Normalized PI', fontsize=13, fontweight='bold')
-            plt.title(f'{star_name2} - {fltr_arr[z]}', fontsize=14, fontweight='bold')
-            plt.tick_params(axis='both', labelsize=12, width=1.2)
-            plt.legend(fontsize=12, loc='upper right')
-            plt.grid(alpha=0.3)
-            plt.tight_layout()
-            plt.savefig(os.path.join(outdir, f'profile_radial_PI_{star_name}_{obsmod}_{fltr_arr[z]}_{z}.png'), dpi=150, bbox_inches='tight')
             plt.close()
 
     # Sauvegarde du DataFrame

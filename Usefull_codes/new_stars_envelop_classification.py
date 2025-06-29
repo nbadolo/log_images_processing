@@ -70,7 +70,7 @@ r = np.linspace(1, nDim // 2 - 1, nDim // 2 - 1)  # Distance radiale (en pixels)
 r_mas = mas_per_pixel * r  # Conversion des distances radiales en millièmes d'arcsecondes
 
 # Dossier principal contenant les étoiles
-log = 'large_log_+'
+log = 'test'
 main_folder = '/home/nbadolo/Bureau/Aymard/Donnees_sph/' + log + '/'
 fname1 = 'zpl_p23_make_polar_maps-ZPL_SCIENCE_P23_REDUCED'
 fname2 = '-zpl_science_p23_REDUCED'
