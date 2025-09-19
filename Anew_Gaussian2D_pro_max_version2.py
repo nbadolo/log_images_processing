@@ -31,10 +31,13 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable  # Pour colorbar compact
 from AymardPack import process_fits_image as pfi # Extraction du bruit et des pixels morts/chauds
 from openpyxl import load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
+import openpyxl
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 # === PARAMÈTRES GLOBAUX ===
 PIXEL_TO_MAS = 3.4              # Conversion de pixels en milli-arcsecondes (mas)
-READ_NOISE = 0.01               # Bruit de lecture estimé (pour chi² réduit)
+READ_NOISE = 0.00044               # Bruit de lecture estimé (pour chi² réduit)
 WINDOW_PIXELS = 100             # Taille du zoom autour de l'étoile pour le fit (en pixels)
 
 # === GAUSSIENNE 2D CIRCULAIRE ===
@@ -52,6 +55,9 @@ def process_single_frame_2d(frame, object_name, filtre, frame_index, save_path):
     y1, y2 = y_max - half, y_max + half
     x1, x2 = x_max - half, x_max + half
     sub_img = frame[y1:y2, x1:x2].astype(float)
+    # Maximum d'intensité dans la sous-image (pour ce filtre)
+    max_intensity = np.max(sub_img)
+
 
     # Normalisation de l'image [0, 1]
     sub_img = pfi(sub_img) # extraction des mauvais pixels 
@@ -107,16 +113,16 @@ def process_single_frame_2d(frame, object_name, filtre, frame_index, save_path):
 
     # Annotations texte
     ax.text(0.02, 0.95, object_name, transform=ax.transAxes,
-            fontsize=12, fontweight='bold', color='white', ha='left', va='top')
+            fontsize=14,  color='white', ha='left', va='top')
     ax.text(0.02, 0.02, filtre, transform=ax.transAxes,
-            fontsize=12, fontweight='bold', color='white', ha='left', va='bottom')
+            fontsize=14,  color='white', ha='left', va='bottom')
 
     # Axes et ticks
-    ax.set_xlabel("Relative RA (mas)", fontsize=11, fontweight='bold')
-    ax.set_ylabel("Relative Dec (mas)", fontsize=11, fontweight='bold')
-    ax.tick_params(axis='both', labelsize=9, width=1.2)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight('bold')
+    ax.set_xlabel("Relative RA (mas)", fontsize=14)
+    ax.set_ylabel("Relative Dec (mas)", fontsize=14)
+    ax.tick_params(axis='both', labelsize=14, width=1.2)
+    # for label in ax.get_xticklabels() + ax.get_yticklabels():
+    #     label.set_fontweight('bold')
     ax.locator_params(axis='x', nbins=5)
     ax.locator_params(axis='y', nbins=5)
 
@@ -124,24 +130,27 @@ def process_single_frame_2d(frame, object_name, filtre, frame_index, save_path):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     cbar = fig.colorbar(im, cax=cax)
-    cbar.set_label('I / Imax', fontsize=10, fontweight='bold')
-    for t in cbar.ax.get_yticklabels():
-        t.set_fontweight('bold')
+    cbar.set_label('I / Imax', fontsize=14)
+    cbar.ax.tick_params(labelsize=14, width=1.2)
+    # for t in cbar.ax.get_yticklabels():
+    #     t.set_fontweight('bold')
 
     # Sauvegarde de la figure
     plt.tight_layout()
     os.makedirs(save_path, exist_ok=True)
-    fig_filename = f"{object_name.replace(' ', '_')}_{filtre.replace(' ', '_')}_frame{frame_index+1}.png"
-    plt.savefig(os.path.join(save_path, fig_filename))
+    fig_filename = f"{object_name.replace(' ', '_')}_{filtre.replace(' ', '_')}_frame{frame_index+1}"
+    plt.savefig(os.path.join(save_path, fig_filename + ".png"), dpi=300)
+    plt.savefig(os.path.join(save_path, fig_filename + ".eps"), format='eps', dpi=300)
     plt.show()
     plt.close()
-
     return {
         'Etoile': object_name,
         'Filtre': filtre,
         'FWHM_mas': round(FWHM_mas, 2),
         'Sigma_pix': round(sigma, 2),
-        'Chi2_reduit': round(chi2_red, 4)
+        'Chi2_reduit': round(chi2_red, 4),
+        'Max_intensite': round(max_intensity, 4) 
+
     }
 
 # === TRAITEMENT D'UN FICHIER FITS ===
@@ -154,6 +163,7 @@ def process_fits_file(filepath, fallback_name, save_path):
             object_name = header.get('OBJECT', fallback_name)
             filtre1 = header.get('HIERARCH ESO INS3 OPTI5 NAME', 'filtre1')
             filtre2 = header.get('HIERARCH ESO INS3 OPTI6 NAME', 'filtre2')
+
 
             # Si l'image est en 3D et contient deux filtres
             if data.ndim == 3 and data.shape[0] == 2:
@@ -248,7 +258,33 @@ def process_directory(fits_root_folder, output_root_folder):
     df = pd.DataFrame(etoile_data)
     nb_resolues = df[df['Resolution'] == 'Résolue'].shape[0]
     nb_non_resolues = df[df['Resolution'] == 'Non résolue'].shape[0]
+    # ...existing code...
+    nb_resolues = int(df[df['Resolution'] == 'Résolue'].shape[0])
+    nb_non_resolues = int(df[df['Resolution'] == 'Non résolue'].shape[0])
 
+    # Sécurité : si aucun cas, on met 0
+    if nb_resolues is None or np.isnan(nb_resolues):
+        nb_resolues = 0
+    if nb_non_resolues is None or np.isnan(nb_non_resolues):
+        nb_non_resolues = 0
+
+    sizes = [nb_resolues, nb_non_resolues]
+
+    # Pour éviter l'erreur si tout est à zéro
+    if sum(sizes) == 0:
+        print("Aucune étoile résolue ou non résolue, camembert non généré.")
+    else:
+        plt.figure(figsize=(6, 6))
+        plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+                startangle=90, textprops={'fontsize': 14})
+        plt.title('Proportion résolues vs non résolues', fontsize=14)
+        plt.axis('equal')
+
+        chart_folder = os.path.join(output_csv, "Charts")
+        os.makedirs(chart_folder, exist_ok=True)
+        plt.savefig(os.path.join(chart_folder, 'resolues_vs_nonresolues_pie.png'), dpi=300)
+        plt.savefig(os.path.join(chart_folder, 'resolues_vs_nonresolues_pie.eps'), format='eps', dpi=300)
+        plt.show()
     print(f"\n✅ Résumé de la résolution :")
     print(f"🔬 Nombre total d'étoiles résolues     : {nb_resolues}")
     print(f"🌑 Nombre total d'étoiles non résolues : {nb_non_resolues}")
@@ -271,29 +307,10 @@ def process_directory(fits_root_folder, output_root_folder):
         sheet.cell(row=start_row + 2, column=1, value='Étoiles non résolues')
         sheet.cell(row=start_row + 2, column=2, value=nb_non_resolues)
 
-    # 📊 Création du camembert
-    labels = ['Résolues', 'Non résolues']
-    sizes = [nb_resolues, nb_non_resolues]
-    colors = ['#66b3ff', '#ff9999']
-
-    plt.figure(figsize=(6, 6))
-    plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-            startangle=90, textprops={'fontsize': 12, 'weight': 'bold'})
-    plt.title('Proportion résolues vs non résolues', fontsize=14, weight='bold')
-    plt.axis('equal')
-
-    chart_folder = os.path.join(output_csv, "Charts")
-    os.makedirs(chart_folder, exist_ok=True)
-    plt.savefig(os.path.join(chart_folder, 'resolues_vs_nonresolues_pie.png'))
-    plt.show()
-
     print(df)
     print(f"\n✅ Rapport final enregistré dans : {csv_path}")
 
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill
-    from openpyxl.utils import get_column_letter
-
+    
     excel_path = os.path.join(output_csv, 'rapport_fwhm_resolution.xlsx')
     df.to_excel(excel_path, index=False)
 

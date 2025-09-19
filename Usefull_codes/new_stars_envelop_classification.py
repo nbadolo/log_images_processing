@@ -70,7 +70,7 @@ r = np.linspace(1, nDim // 2 - 1, nDim // 2 - 1)  # Distance radiale (en pixels)
 r_mas = mas_per_pixel * r  # Conversion des distances radiales en millièmes d'arcsecondes
 
 # Dossier principal contenant les étoiles
-log = 'test'
+log = 'large_log_+'
 main_folder = '/home/nbadolo/Bureau/Aymard/Donnees_sph/' + log + '/'
 fname1 = 'zpl_p23_make_polar_maps-ZPL_SCIENCE_P23_REDUCED'
 fname2 = '-zpl_science_p23_REDUCED'
@@ -300,7 +300,7 @@ for (star_dir, filter_name), star_profile in star_profiles.items():
         plt.xlabel("Radius (mas)", fontsize=13, fontweight='bold')  # Axe X en gras
         plt.ylabel("Intensity", fontsize=13, fontweight='bold')  # Axe Y en gras
         plt.xlim(0, max_pixel * mas_per_pixel)  # Limiter l'axe des x
-        plt.grid()
+        #plt.grid()
         plt.legend(fontsize=12)  # Taille de la police pour la légende
 
         # Ajouter des annotations pour le ratio et l'état de l'étoile
@@ -319,10 +319,11 @@ for (star_dir, filter_name), star_profile in star_profiles.items():
         except Exception as e:
             print(f"Erreur lors de l'enregistrement des fichiers : {e}")
         
-        plt.show()  # Afficher le tracé
+        #plt.show()  # Afficher le tracé
         plt.close()  # Fermer la figure pour éviter d'encombrer la mémoire
 
 print(f"Tous les profils ont été enregistrés dans les dossiers suivants : {output_folder_png} et {output_folder_pdf}")
+
 
 # Enregistrement des résultats dans des fichiers CSV
 chemin_csv = '/home/nbadolo/Bureau/Aymard/Donnees_sph/sphere_files/csv_folder/fwhm_mean_radial_profil/'+log+'/'
@@ -330,6 +331,118 @@ os.makedirs(chemin_csv, exist_ok=True)  # Créer le dossier s'il n'existe pas
 resolved_stars.to_csv(chemin_csv + 'resolved_stars.csv', index=False)
 marginal_stars.to_csv(chemin_csv + 'marginal_stars.csv', index=False)
 unresolved_stars.to_csv(chemin_csv + 'unresolved_stars.csv', index=False)
+
+# Créer une table finale consolidée avec tous les objets et leur statut
+final_classification = best_filters_df.copy()
+final_classification['Statut_Res'] = 'Non résolu'  # Valeur par défaut
+
+# Assigner les statuts de résolution
+for _, row in final_classification.iterrows():
+    ratio = row['Ratio']
+    if ratio >= resol_threshold:
+        final_classification.loc[final_classification['Star'] == row['Star'], 'Statut_Res'] = 'Clairement résolu'
+    elif 1 < ratio < resol_threshold:
+        final_classification.loc[final_classification['Star'] == row['Star'], 'Statut_Res'] = 'Marginalement résolu'
+
+# Enregistrer la table finale consolidée
+final_classification.to_csv(chemin_csv + 'all_stars_classification.csv', index=False)
+print(f"Table finale consolidée sauvegardée : {chemin_csv}all_stars_classification.csv")
+
+# Générer le fichier LaTeX avec seulement les données du tableau
+def generate_classification_latex_table(df, latex_path):
+    """
+    Génère un fichier LaTeX contenant seulement les données du tableau de classification.
+    """
+    
+    # Fonction pour échapper les caractères spéciaux LaTeX SEULEMENT pour les données
+    def escape_latex_data(s):
+        s = str(s)
+        s = s.replace('\\', r'\\')  # Double les backslash pour LaTeX, mais AVANT tout le reste
+        s = s.replace('_', r'\_')
+        s = s.replace('&', r'\&')
+        s = s.replace('%', r'\%')
+        s = s.replace('#', r'\#')
+        s = s.replace('~', r'\textasciitilde{}')
+        s = s.replace('^', r'\^{}')
+        return s
+
+    # Fonction pour formater les nombres avec 3 décimales maximum
+    def format_number(val):
+        try:
+            # Tente de convertir en float
+            num = float(val)
+            # Formate avec 3 décimales maximum, en supprimant les zéros inutiles
+            formatted = f"{num:.3f}".rstrip('0').rstrip('.')
+            return formatted
+        except (ValueError, TypeError):
+            # Si ce n'est pas un nombre, retourne tel quel (comme les noms d'étoiles)
+            return escape_latex_data(val)
+
+    # Fonction pour convertir les statuts en acronymes
+    def convert_status_to_acronym(status):
+        status_map = {
+            'Clairement résolu': 'CR',
+            'Marginalement résolu': 'MR', 
+            'Non résolu': 'NR'
+        }
+        return status_map.get(status, status)
+
+    # Fonction pour convertir les valeurs PSF en français
+    def convert_psf_to_french(psf_value):
+        if psf_value is True or psf_value == 'True' or psf_value == True:
+            return 'oui'
+        elif psf_value is False or psf_value == 'False' or psf_value == False:
+            return 'non'
+        else:
+            return str(psf_value)
+
+    # Copie du DataFrame pour les modifications
+    df_latex = df.copy()
+    
+    # Convertir les statuts en acronymes AVANT le renommage des colonnes
+    if 'Statut_Res' in df_latex.columns:
+        df_latex['Statut_Res'] = df_latex['Statut_Res'].apply(convert_status_to_acronym)
+    
+    # Convertir les valeurs PSF en français AVANT le renommage
+    if 'Has_PSF' in df_latex.columns:
+        df_latex['Has_PSF'] = df_latex['Has_PSF'].apply(convert_psf_to_french)
+    
+    # Renommer les colonnes pour LaTeX APRÈS les conversions
+    df_latex.columns = df_latex.columns.str.replace('Ratio', r'$\eta$', regex=False)
+    df_latex.columns = df_latex.columns.str.replace('Statut_Res', 'Statut de\\\\l\'enveloppe', regex=False)
+
+    # Lignes de données seulement (pour inclusion dans longtable)
+    latex_table = ""
+    
+    # Lignes de données
+    for _, row in df_latex.iterrows():
+        # Applique le formatage des nombres et l'échappement LaTeX approprié
+        formatted_row = [format_number(val) for val in row.tolist()]
+        line = " & ".join(formatted_row) + " \\\\\n"
+        latex_table += line
+
+    # Sauvegarde dans un fichier .tex avec force flush
+    try:
+        with open(latex_path, 'w', encoding='utf-8') as f:
+            f.write(latex_table)
+            f.flush()  # Force l'écriture immédiate
+        print(f"📄 Tableau LaTeX classification sauvegardé dans : {latex_path}")
+        
+        # Vérification immédiate
+        if os.path.exists(latex_path):
+            size = os.path.getsize(latex_path)
+            print(f"   ✅ Fichier vérifié : {size} bytes")
+        else:
+            print(f"   ❌ Fichier non trouvé après écriture !")
+            
+    except Exception as e:
+        print(f"❌ ERREUR dans generate_classification_latex_table : {e}")
+        raise e
+
+# Générer le fichier LaTeX avec les données du tableau
+latex_data_path = os.path.join(chemin_csv, 'Tables', 'all_stars_classification.tex')
+os.makedirs(os.path.dirname(latex_data_path), exist_ok=True)
+generate_classification_latex_table(final_classification, latex_data_path)
 
 # Comptage du nombre d'étoiles par catégorie de résolution
 resolved_count = len(resolved_stars)
@@ -345,6 +458,39 @@ print(f"Nombre d'étoiles marginalement résolues : {marginal_count}")
 print(unresolved_stars)
 print(f"Nombre d'étoiles non résolues : {unresolved_count}")
 
+# 📊 Camembert classification des enveloppes stellaires (A&A style)
+# labels = ['Clearly\nresolved', 'Marginally\nresolved', 'Unresolved']
+labels = ['Clairement\nrésolus', 'Marginalement\nrésolus', 'Non\nrésolus']
+sizes = [resolved_count, marginal_count, unresolved_count]
+colors = ['#377eb8', '#4daf4a', '#ff69b4']  # Bleu, jaune, rose
+#colors = ['#4daf4a', '#ffcc00', '#e41a1c']  # Vert, jaune, rouge
+
+plt.figure(figsize=(6, 5))
+wedges, texts, autotexts = plt.pie(
+    sizes,
+    labels=labels,
+    colors=colors,
+    autopct='%1.1f%%',
+    startangle=90,
+    textprops={'fontsize': 13},
+    wedgeprops={'linewidth': 1.5, 'edgecolor': 'white'}
+)
+plt.setp(texts, fontsize=13)
+plt.setp(autotexts, fontsize=13, color='white')
+#plt.title('Envelope classification', fontsize=16, weight='bold')
+plt.axis('equal')
+
+# Dossier de sauvegarde pour le camembert
+chart_folder = os.path.join(chemin_csv, "Charts")
+os.makedirs(chart_folder, exist_ok=True)
+pie_path = os.path.join(chart_folder, 'envelope_classification_pie.png')
+plt.savefig(pie_path, dpi=300, bbox_inches='tight')
+print(f"Camembert sauvegardé dans : {pie_path}")
+#plt.show()
+
 # Vérification que le total des étoiles classées est 53
 total_classified = resolved_count + marginal_count + unresolved_count
 print(f"Total des étoiles classées : {total_classified}")
+
+# Rappel du chemin de la table LaTeX générée
+print(f"\n📄 Table LaTeX de classification générée : {latex_data_path}")

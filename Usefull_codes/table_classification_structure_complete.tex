@@ -1,0 +1,33 @@
+\begin{longtable}{@{}p{3.5cm}p{2cm}p{2cm}p{2cm}p{2cm}p{2cm}p{2.5cm}@{}}
+\caption{Classification des enveloppes stellaires basée sur l'analyse de résolution} \\
+\toprule
+\textbf{Star} & \textbf{Filter} & \textbf{FWHM\_Star} & \textbf{FWHM\_PSF} & \textbf{$\eta$} & \textbf{Has\_PSF} & \textbf{Statut de\\l'enveloppe} \\
+\midrule
+\endfirsthead
+
+\multicolumn{7}{c}%
+{{\bfseries \tablename\ \thetable{} -- Suite de la page précédente}} \\
+\toprule
+\textbf{Star} & \textbf{Filter} & \textbf{FWHM\_Star} & \textbf{FWHM\_PSF} & \textbf{$\eta$} & \textbf{Has\_PSF} & \textbf{Statut de\\l'enveloppe} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{7}{r}{{Suite à la page suivante}} \\
+\endfoot
+
+\bottomrule
+\multicolumn{7}{p{\textwidth}}{%
+\textbf{Notes :} \\
+$\eta$ : Rapport entre la FWHM de l'étoile et celle de la PSF ($\eta = \text{FWHM}_{\text{étoile}}/\text{FWHM}_{\text{PSF}}$). \\
+\textbf{CR} : Clairement résolu ($\eta \geq 1.35$). \\
+\textbf{MR} : Marginalement résolu ($1 < \eta < 1.35$). \\
+\textbf{NR} : Non résolu ($\eta \leq 1$). \\
+Has\_PSF indique si l'étoile possède sa propre PSF de référence.%
+} \\
+\endlastfoot
+
+% LES DONNÉES SERONT INSÉRÉES ICI PAR LE SCRIPT PYTHON
+% \input{Tables/all_stars_classification.tex}
+
+\end{longtable}

@@ -250,9 +250,9 @@ def process_directory(fits_root_folder, output_root_folder):
 
 # === LANCEMENT PRINCIPAL ===
 
-folder_name ="V854_Cen/"
+#folder_name ="V854_Cen/"
 #folder_name = "test1/"
-#folder_name = "large_log_+/"
+folder_name = "large_log_+/"
 #folder_name = "resolved_log/"
 #folder_name = "all_resolved_log/"
 main_path = "/home/nbadolo/Bureau/Aymard/Donnees_sph/Gaussian"

@@ -168,48 +168,42 @@ def log_image(star_name, obsmod):
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
             # --- Image DOLP ---
-            # --- Image DOLP ---
-            im1 = ax1.imshow(
-                sub_v_arr[z][2], cmap='inferno', origin='lower',
-                vmin=np.min(sub_v_arr[z][2]), vmax=np.max(sub_v_arr[z][2]),
-                extent=[x_min, x_max, y_min, y_max]
-            )
-            ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=12, fontweight='bold', color='white', va='top')
-            ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=12, fontweight='bold', color='white', va='bottom')
-
+            vmin1 = 0
+            vmax1 = np.max(sub_v_arr[z][2])
+            im1 = ax1.imshow(sub_v_arr[z][2], cmap='plasma', origin='lower', vmin=vmin1, vmax=vmax1, extent=[x_min, x_max, y_min, y_max])
+            ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=14, color='white', va='top')
+            ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=14, color='white', va='bottom')
+            
             divider1 = make_axes_locatable(ax1)
-            cax1 = divider1.append_axes('right', size='3%', pad=0.02)
+            cax1 = divider1.append_axes('right', size='3%', pad=0.03)
+            cb1 = fig.colorbar(im1, cax=cax1, orientation='vertical')
+            cb1.ax.tick_params(labelsize=14)
+            
             cmapProp = {'drawedges': True}
-            im1_max = np.max(sub_v_arr[z][2])
-            if 1e-3 < im1_max < 1e-2:
-                cb1 = fig.colorbar(im1, cax=cax1, orientation='vertical', ticks=[1e-3,2e-3,3e-3,4e-3,5e-3], **cmapProp)
-            elif 1e-2 < im1_max < 1e-1:
-                cb1 = fig.colorbar(im1, cax=cax1, orientation='vertical', ticks=[1.0e-2,1.5e-2,2.0e-2,2.5e-2,3.0e-2,3.5e-2,4.0e-2], **cmapProp)
-            elif 1e-1 < im1_max:
-                cb1 = fig.colorbar(im1, cax=cax1, orientation='vertical', ticks=[1.0e-1,1.5e-1,2.0e-1,2.5e-1,3.0e-1,3.5e-1,4.0e-1], **cmapProp)
-            else:
-                cb1 = fig.colorbar(im1, cax=cax1, orientation='vertical', **cmapProp)
-            #cb1.ax.set_ylabel('DOLP', fontsize=11, weight='bold', labelpad=1.5)
-            cb1.ax.tick_params(labelsize=11)
+            
             cb1.formatter.set_powerlimits((0, 0))
-            cb1.ax.yaxis.get_offset_text().set(size=11)#, weight='bold')
+            cb1.ax.yaxis.get_offset_text().set(size=14)
             # for tick in cb1.ax.yaxis.get_major_ticks():
             #     tick.label2.set_fontweight('bold')
 
-            ax1.set_xlabel('Relative RA(mas)', fontsize=11, weight='bold')
-            ax1.set_ylabel('Relative Dec(mas)', fontsize=11, weight='bold',labelpad=1.5)
-            ax1.tick_params(axis='both', labelsize=9, width=1.2)
-            for label in ax1.get_xticklabels() + ax1.get_yticklabels():
-                label.set_fontweight('bold')
+            ax1.set_xlabel('Relative RA (mas)', fontsize=14)
+            ax1.set_ylabel('Relative Dec (mas)', fontsize=14,labelpad=1.5)
+            ax1.tick_params(axis='both', labelsize=14, width=1.2)
+            # for label in ax1.get_xticklabels() + ax1.get_yticklabels():
+            #     label.set_fontweight('bold')
             ax1.locator_params(axis='x', nbins=5)
             ax1.locator_params(axis='y', nbins=5)
 
             # --- Image log10(PI) ---
-            im2 = ax2.imshow(
-                np.log10(sub_v_arr[z][1]), cmap='inferno', origin='lower',
-                vmin=0, vmax=np.max(np.log10(sub_v_arr[z][1])),
-                extent=[x_min, x_max, y_min, y_max]
+
+            im2 = ax2.imshow(np.log10(sub_v_arr[z][1] + np.abs(np.min(sub_v_arr[z][1])) + 10), 
+                cmap='inferno', origin='lower', extent=[x_min, x_max, y_min, y_max]
             )
+
+            divider2 = make_axes_locatable(ax2)
+            cax2 = divider2.append_axes('right', size='3%', pad=0.03)
+            cb2 = fig.colorbar(im2, cax=cax2, orientation='vertical')
+            cb2.ax.tick_params(labelsize=14)
             # Vecteurs de polarisation
             # q = ax2.quiver(
             #     X[::X_step, ::X_step], Y[::X_step, ::X_step],
@@ -217,33 +211,17 @@ def log_image(star_name, obsmod):
             #     color='w', pivot='mid'
             # )
             #ax2.quiverkey(q, X=0.1, Y=1.03, U=0, label='', labelpos='E')
-            ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=12, fontweight='bold', color='white', va='top')
-
-            divider2 = make_axes_locatable(ax2)
-            cax2 = divider2.append_axes('right', size='3%', pad=0.018)
-            im2_max = np.max(np.log10(sub_v_arr[z][1]))
-            if 1 < im2_max < 5:
-                cb2 = fig.colorbar(im2, cax=cax2, orientation='vertical', ticks=[1.0, 1.5, 2.0, 2.5, 3.0], **cmapProp)
-            elif 1e1 < im2_max < 1e2:
-                cb2 = fig.colorbar(im2, cax=cax2, orientation='vertical', ticks=[1e1,2e1,3e1,4e1,5e1], **cmapProp)
-            elif 1e2 < im2_max < 10e2:
-                cb2 = fig.colorbar(im2, cax=cax2, orientation='vertical', ticks=[1e2,2e2,3.3e2,44e2,5e2], **cmapProp)
-            elif 1e3 < im2_max:
-                cb2 = fig.colorbar(im2, cax=cax2, orientation='vertical', ticks=[1e3,2e3,3e3,4e3,5e3], **cmapProp)
-            else:
-                cb2 = fig.colorbar(im2, cax=cax2, orientation='vertical', **cmapProp)
-            #cb2.ax.set_ylabel('log10(PI)', fontsize=11, weight='bold', labelpad=1.5)
-            cb2.ax.tick_params(labelsize=11)
+            ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=14, color='white', va='top')
             cb2.formatter.set_powerlimits((0, 0))
-            cb2.ax.yaxis.get_offset_text().set(size=11, weight='bold')
+            #cb2.ax.yaxis.get_offset_text().set(size=14)
             #for tick in cb2.ax.yaxis.get_major_ticks():
             #    tick.label2.set_fontweight('bold')
 
-            ax2.set_xlabel('Relative RA(mas)', fontsize=11, weight='bold')
-            #ax2.set_ylabel('Relative Dec (mas)', fontsize=11, weight='bold',labelpad=1)
-            ax2.tick_params(axis='both', labelsize=9, width=1.2)
-            for label in ax2.get_xticklabels() + ax2.get_yticklabels():
-                label.set_fontweight('bold')
+            ax2.set_xlabel('Relative RA (mas)', fontsize=14)
+            #ax2.set_ylabel('Relative Dec (mas)', fontsize=14, weight='bold',labelpad=1)
+            ax2.tick_params(axis='both', labelsize=14, width=1.2)
+            # for label in ax2.get_xticklabels() + ax2.get_yticklabels():
+            #     label.set_fontweight('bold')
             ax2.locator_params(axis='x', nbins=5)
             ax2.locator_params(axis='y', nbins=5)
             ax2.axes.yaxis.set_ticklabels([])  # Pas de labels y sur la 2e image
@@ -252,14 +230,20 @@ def log_image(star_name, obsmod):
             plt.savefig(
                 '/home/nbadolo/Bureau/Aymard/Donnees_sph/First/' + star_name +
                 '/plots/no_psf/PI/' + star_name + '_' + f'{obsmod}_{fltr_arr[z]}_{z}' + '_log_vect.pdf',
-                dpi=100, bbox_inches='tight', pad_inches=0.01
+                dpi=300, bbox_inches='tight', pad_inches=0.01
             )
             plt.savefig(
                 '/home/nbadolo/Bureau/Aymard/Donnees_sph/First/' + star_name +
                 '/plots/no_psf/PI/' + star_name + '_' + f'{obsmod}_{fltr_arr[z]}_{z}' + '_log_vect.png',
-                dpi=100, bbox_inches='tight', pad_inches=0.01
+                dpi=300, bbox_inches='tight', pad_inches=0.01
             )
-            plt.close(fig) 
+            plt.savefig(
+                '/home/nbadolo/Bureau/Aymard/Donnees_sph/First/' + star_name +
+                '/plots/no_psf/PI/' + star_name + '_' + f'{obsmod}_{fltr_arr[z]}_{z}' + '_log_vect.eps',
+                format='eps', dpi=300, bbox_inches='tight', pad_inches=0.01
+            )
+            plt.show()
+            plt.close(fig)
             # === Bloc supplémentaire : PIL et DoLP azimutaux (Schmid/de Boer) ===
             # Q = sub_v_arr[z][5], U = sub_v_arr[z][4], I = sub_v_arr[z][0]
             Q = sub_v_arr[z][5]
@@ -284,24 +268,25 @@ def log_image(star_name, obsmod):
             im4 = ax4.imshow(DoLP_az, cmap='inferno', origin='lower',
                             extent=[x_min, x_max, y_min, y_max],
                             vmin=np.min(DoLP_az), vmax=np.max(DoLP_az))
-            ax4.text(0.02, 0.95, f'{star_name2}', transform=ax4.transAxes, fontsize=12, fontweight='bold', color='white', va='top')
-            ax4.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax4.transAxes, fontsize=12, fontweight='bold', color='white', va='bottom')
+            ax4.text(0.02, 0.95, f'{star_name2}', transform=ax4.transAxes, fontsize=14, color='white', va='top')
+            ax4.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax4.transAxes, fontsize=14, color='white', va='bottom')
             divider4 = make_axes_locatable(ax4)
-            cax4 = divider4.append_axes('right', size='3%', pad=0.02)
+            cax4 = divider4.append_axes('right', size='3%', pad=0.03)
             cb4 = fig2.colorbar(im4, cax=cax4, orientation='vertical')
-            cb4.ax.tick_params(labelsize=11)
+            cb4.ax.tick_params(labelsize=14)
             #cb4.formatter = ScalarFormatter(useMathText=True)
             cb4.formatter.set_powerlimits((0, 0))
             cb4.update_ticks()
-            cb4.ax.yaxis.get_offset_text().set(size=11)
+            cb4.ax.yaxis.get_offset_text().set(size=14)
             #cb4.set_ticks(np.linspace(np.nanmin(DoLP_az), np.nanmax(DoLP_az), 6))
             # cb4.ax.set_ylabel('DoLP (azimutal)', fontsize=11, weight='bold')
             # ax4.set_title('DoLP azimutal (PIL/I)', fontsize=12, weight='bold')
-            ax4.set_xlabel('Relative RA(mas)', fontsize=11, weight='bold')
-            ax4.set_ylabel('Relative Dec(mas)', fontsize=11, weight='bold')
+            ax4.set_xlabel('Relative RA (mas)', fontsize=14)
+            ax4.set_ylabel('Relative Dec (mas)', fontsize=14, labelpad=1.5)
+            ax4.tick_params(axis='both', labelsize=14, width=1.2)
             # Limite le nombre de ticks sur les axes
-            for label in ax4.get_xticklabels() + ax4.get_yticklabels():
-                label.set_fontweight('bold')
+            # for label in ax4.get_xticklabels() + ax4.get_yticklabels():
+            #     label.set_fontweight('bold')
             ax4.locator_params(axis='x', nbins=5)
             ax4.locator_params(axis='y', nbins=5)
             # # --- PIL azimutal (à droite) ---
@@ -325,45 +310,51 @@ def log_image(star_name, obsmod):
             pil_vmin = np.nanmin(logPIL)
             pil_vmax = np.nanmax(logPIL)
 
-            # Si tu veux forcer la colorbar à commencer à 0 (PIL=1), mais attention à la dynamique :
+            # forcer la colorbar à commencer à 0 (PIL=1):
             vmin = 0
             vmax = pil_vmax
 
             im3 = ax3.imshow(logPIL, cmap='inferno', origin='lower',
                             extent=[x_min, x_max, y_min, y_max],
                             vmin=vmin, vmax=vmax)
-            ax3.text(0.02, 0.95, f'{star_name2}', transform=ax3.transAxes, fontsize=12, fontweight='bold', color='white', va='top')
+            ax3.text(0.02, 0.95, f'{star_name2}', transform=ax3.transAxes, fontsize=14, color='white', va='top')
             divider3 = make_axes_locatable(ax3)
-            cax3 = divider3.append_axes('right', size='3%', pad=0.02)
+            cax3 = divider3.append_axes('right', size='3%', pad=0.03)
             cb3 = fig2.colorbar(im3, cax=cax3, orientation='vertical')
-            cb3.ax.tick_params(labelsize=11)
+            cb3.ax.tick_params(labelsize=14)
             #cb3.formatter = ScalarFormatter(useMathText=True)
             cb3.formatter.set_powerlimits((0, 0))
             ticks_pil = np.linspace(vmin, vmax, 5)
             cb3.set_ticks(ticks_pil)
             cb3.ax.set_yticklabels([f"{tick:.1f}" for tick in ticks_pil])
             #cb3.update_ticks()
-            cb3.ax.yaxis.get_offset_text().set(size=11)
+            cb3.ax.yaxis.get_offset_text().set(size=14)
             # cb3.ax.set_ylabel('log$_{10}$(PIL$_{\\phi}$)', fontsize=11, weight='bold')
             # ax3.set_title('log$_{10}$(PIL azimutal)', fontsize=12, weight='bold')
             # ax3.set_title('PIL azimutal (|Q_phi|)', fontsize=12, weight='bold')
-            ax3.set_xlabel('Relative RA(mas)', fontsize=11, weight='bold')
-            #ax3.set_ylabel('Relative Dec(mas)', fontsize=11, weight='bold')
+            ax3.set_xlabel('Relative RA (mas)', fontsize=14)
+            #ax3.set_ylabel('Relative Dec (mas)', fontsize=14, weight='bold')
+            ax3.tick_params(axis='both', labelsize=14, width=1.2)
             # Limite le nombre de ticks sur les axes
-            for label in ax3.get_xticklabels() + ax3.get_yticklabels():
-                label.set_fontweight('bold')
+            # for label in ax3.get_xticklabels() + ax3.get_yticklabels():
+            #     label.set_fontweight('bold')
             ax3.locator_params(axis='x', nbins=5)
             ax3.locator_params(axis='y', nbins=5)
 
             plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10, wspace=0.15, hspace=0.35)
             plt.savefig(
                 f'/home/nbadolo/Bureau/Aymard/Donnees_sph/First/{star_name}/plots/no_psf/PI/{star_name}_{obsmod}_{fltr_arr[z]}_{z}_azimutal.pdf',
-                dpi=100, bbox_inches='tight', pad_inches=0.01
+                dpi=300, bbox_inches='tight', pad_inches=0.01
             )
             plt.savefig(
                 f'/home/nbadolo/Bureau/Aymard/Donnees_sph/First/{star_name}/plots/no_psf/PI/{star_name}_{obsmod}_{fltr_arr[z]}_{z}_azimutal.png',
-                dpi=100, bbox_inches='tight', pad_inches=0.01
+                dpi=300, bbox_inches='tight', pad_inches=0.01
             )
+            plt.savefig(
+                f'/home/nbadolo/Bureau/Aymard/Donnees_sph/First/{star_name}/plots/no_psf/PI/{star_name}_{obsmod}_{fltr_arr[z]}_{z}_azimutal.eps',
+                format='eps', dpi=300, bbox_inches='tight', pad_inches=0.01
+            )
+            plt.show()
             plt.close(fig2)
     return()
 

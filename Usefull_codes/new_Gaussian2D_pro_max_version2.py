@@ -139,34 +139,36 @@ def process_single_frame_2d(frame, object_name, filtre, frame_index, save_path):
 
     # Annotations texte pour le nom de l'étoile et le filtre
     ax.text(0.02, 0.95, object_name, transform=ax.transAxes,
-            fontsize=12, fontweight='bold', color='white', ha='left', va='top')
+            fontsize=14,  color='white', ha='left', va='top')
     ax.text(0.02, 0.02, filtre, transform=ax.transAxes,
-            fontsize=12, fontweight='bold', color='white', ha='left', va='bottom')
-    
-    
+            fontsize=14, color='white', ha='left', va='bottom')
+
 
     # Axes et ticks
-    ax.set_xlabel("Relative RA(mas)", fontsize=11, fontweight='bold')
-    ax.set_ylabel("Relative Dec (mas)", fontsize=11, fontweight='bold')
-    ax.tick_params(axis='both', labelsize=9, width=1.2)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight('bold')
+    ax.set_xlabel("Relative RA (mas)", fontsize=14)
+    ax.set_ylabel("Relative Dec (mas)", fontsize=14)
+    ax.tick_params(axis='both', labelsize=14, width=1.2)
+    # for label in ax.get_xticklabels() + ax.get_yticklabels():
+    #     label.set_fontweight('bold')
     ax.locator_params(axis='x', nbins=5)
     ax.locator_params(axis='y', nbins=5)
 
     # Colorbar compacte à droite
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cax = divider.append_axes("right", size="5%", pad=0.03)
     cbar = fig.colorbar(im, cax=cax)
-    cbar.set_label('I / Imax', fontsize=10, fontweight='bold')
+    cbar.set_label('I / Imax', fontsize=14)
+    cbar.ax.tick_params(labelsize=14, width=1.2)
     # for t in cbar.ax.get_yticklabels(): # pour mettre en gras les labels de la colorbar
     #     t.set_fontweight('bold')
 
     # Sauvegarde de la figure
     plt.tight_layout()
     os.makedirs(save_path, exist_ok=True)
-    fig_filename = f"{object_name.replace(' ', '_')}_{filtre.replace(' ', '_')}_frame{frame_index+1}.png"
-    plt.savefig(os.path.join(save_path, fig_filename))
+    fig_filename_png = f"{object_name.replace(' ', '_')}_{filtre.replace(' ', '_')}_frame{frame_index+1}.png"
+    plt.savefig(os.path.join(save_path, fig_filename_png))
+    fig_filename_pdf = f"{object_name.replace(' ', '_')}_{filtre.replace(' ', '_')}_frame{frame_index+1}.pdf"
+    plt.savefig(os.path.join(save_path, fig_filename_pdf))
     #plt.show()
     plt.close()
 
@@ -212,6 +214,47 @@ def process_fits_file(filepath, fallback_name, save_path):
     return results
 
 
+def generate_latex_table(df, latex_path, nb_resolues, nb_non_resolues, total_etoiles):
+    """
+    Génère un fichier LaTeX contenant le tableau des résultats FWHM avec mise en forme.
+    
+    :param df: DataFrame contenant les résultats
+    :param latex_path: Chemin de sauvegarde du fichier LaTeX  
+    :param nb_resolues: Nombre d'étoiles résolues
+    :param nb_non_resolues: Nombre d'étoiles non résolues
+    :param total_etoiles: Nombre total d'étoiles
+    """
+    
+    # Fonction pour échapper les caractères spéciaux LaTeX
+    def escape_latex(s):
+        s = str(s)
+        s = s.replace('\\', r'\\')  # Double les backslash pour LaTeX, mais AVANT tout le reste
+        s = s.replace('_', r'\_')
+        s = s.replace('&', r'\&')
+        s = s.replace('%', r'\%')
+        s = s.replace('$', r'\$')
+        s = s.replace('#', r'\#')
+        s = s.replace('{', r'\{')
+        s = s.replace('}', r'\}')
+        s = s.replace('~', r'\textasciitilde{}')
+        s = s.replace('^', r'\^{}')
+        return s
+
+    # Lignes de données seulement (pour inclusion dans longtable)
+    latex_table = ""
+    
+    # Lignes de données
+    for _, row in df.iterrows():
+        line = " & ".join(escape_latex(val) for val in row.tolist()) + " \\\\\n"
+        latex_table += line
+
+    # Sauvegarde dans un fichier .tex
+    with open(latex_path, 'w') as f:
+        f.write(latex_table)
+    
+    print(f"📄 Tableau LaTeX sauvegardé dans : {latex_path}")
+
+
 def process_directory(fits_root_folder, output_root_folder):
     os.makedirs(output_root_folder, exist_ok=True)
     all_results = []
@@ -255,7 +298,7 @@ def process_directory(fits_root_folder, output_root_folder):
                 etoile_data.append({
                     **s,
                     'FWHM_psf': p['FWHM_mas'],
-                    'PSF_existe': 'Yes'
+                    'PSF ?': 'Oui'
                 })
         else:
             for s in star_results:
@@ -263,7 +306,7 @@ def process_directory(fits_root_folder, output_root_folder):
                 etoile_data.append({
                     **s,
                     'FWHM_psf': None,  # Rempli plus tard
-                    'PSF_existe': 'No'
+                    'PSF ?': 'Non'
                 })
 
     # Moyennes par filtre
@@ -273,7 +316,7 @@ def process_directory(fits_root_folder, output_root_folder):
 
     # Attribution des FWHM PSF manquantes
     for entry in etoile_data:
-        if entry['PSF_existe'] == 'No':
+        if entry['PSF ?'] == 'Non':
             filtre = entry['Filtre']
             fwhm_moyenne = moyennes_par_filtre.get(filtre, '-')
             entry['FWHM_psf'] = fwhm_moyenne
@@ -302,16 +345,26 @@ def process_directory(fits_root_folder, output_root_folder):
     nb_resolues = df[df['Resolution'] == 'Résolue'].shape[0]
     nb_non_resolues = df[df['Resolution'] == 'Non résolue'].shape[0]
     
+    # Diviser par 2 car chaque étoile est traitée deux fois (deux filtres)
+    nb_resolues_etoiles = nb_resolues // 2
+    nb_non_resolues_etoiles = nb_non_resolues // 2
+    total_etoiles = nb_resolues_etoiles + nb_non_resolues_etoiles
+    
     # ✅ Affichage console
     print(f"\n✅ Résumé de la résolution :")
-    print(f"🔬 Nombre total d'étoiles résolues     : {nb_resolues}")
-    print(f"🌑 Nombre total d'étoiles non résolues : {nb_non_resolues}")
+    print(f"🔬 Nombre total d'étoiles résolues     : {nb_resolues_etoiles} (sur {total_etoiles} étoiles)")
+    print(f"🌑 Nombre total d'étoiles non résolues : {nb_non_resolues_etoiles} (sur {total_etoiles} étoiles)")
+    print(f"📊 Total traités (filtres x2)         : {nb_resolues + nb_non_resolues} mesures")
     
     # 📁 Sauvegarde CSV et excel
     csv_path = os.path.join(output_csv, 'resultats_fwhm.csv')
     df.to_csv(csv_path, index=False)
     os.makedirs(output_csv, exist_ok=True)
     xlsx_path = os.path.join(output_csv, 'resultats_fwhm.xlsx')
+    
+    # 📝 Génération de la version LaTeX
+    latex_path = os.path.join(output_csv, 'resultats_fwhm.tex')
+    generate_latex_table(df, latex_path, nb_resolues_etoiles, nb_non_resolues_etoiles, total_etoiles)
     
     # 💾 Exporter vers Excel avec résumé à la fin
     with pd.ExcelWriter(xlsx_path, engine='openpyxl') as writer:
@@ -323,14 +376,14 @@ def process_directory(fits_root_folder, output_root_folder):
         start_row = len(df) + 2
         sheet.cell(row=start_row, column=1, value='Résumé')
         sheet.cell(row=start_row + 1, column=1, value='Étoiles résolues')
-        sheet.cell(row=start_row + 1, column=2, value=nb_resolues)
+        sheet.cell(row=start_row + 1, column=2, value=nb_resolues_etoiles)
         sheet.cell(row=start_row + 2, column=1, value='Étoiles non résolues')
-        sheet.cell(row=start_row + 2, column=2, value=nb_non_resolues)
+        sheet.cell(row=start_row + 2, column=2, value=nb_non_resolues_etoiles)
     
 
     # 📊 Création du camembert
     labels = ['Résolues', 'Non résolues']
-    sizes = [nb_resolues, nb_non_resolues]
+    sizes = [nb_resolues_etoiles, nb_non_resolues_etoiles]
     colors = ['#66b3ff', '#ff9999']
 
     if any([s is None or np.isnan(s) for s in sizes]) or sum(sizes) == 0:
@@ -339,7 +392,7 @@ def process_directory(fits_root_folder, output_root_folder):
         plt.figure(figsize=(6, 5))
         plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
                 startangle=90, textprops={'fontsize': 12, 'weight': 'bold'})
-        plt.title('Proportion résolues vs non résolues', fontsize=14, weight='bold')
+        plt.title(f'Résolution des étoiles (Total: {total_etoiles} étoiles)', fontsize=14, weight='bold')
         plt.axis('equal')
         # 📁 Dossier pour image
         chart_folder = os.path.join(output_csv, "Charts")
@@ -349,16 +402,18 @@ def process_directory(fits_root_folder, output_root_folder):
         plt.close()
 # === TRAITEMENT D'UN DOSSIER ENTIER ===
 
-    # Compter les étoiles résolues et non résolues
-    nb_resolues = df[df['Resolution'] == 'Résolue'].shape[0]
-    nb_non_resolues = df[df['Resolution'] == 'Non résolue'].shape[0]
+    # Compter les étoiles résolues et non résolues (déjà calculé plus haut)
+    # nb_resolues = df[df['Resolution'] == 'Résolue'].shape[0]
+    # nb_non_resolues = df[df['Resolution'] == 'Non résolue'].shape[0]
 
     print(df)
-    print(f"\n✅ Résumé de la résolution :")
-    print(f"🔬 Nombre total d'étoiles résolues     : {nb_resolues}")
-    print(f"🌑 Nombre total d'étoiles non résolues : {nb_non_resolues}")
+    print(f"\n✅ Résumé final de la résolution :")
+    print(f"🔬 Nombre total d'étoiles résolues     : {nb_resolues_etoiles}")
+    print(f"🌑 Nombre total d'étoiles non résolues : {nb_non_resolues_etoiles}")
+    print(f"📊 Total étoiles analysées             : {total_etoiles}")
 
     print(f"\n✅ Rapport final enregistré dans : {csv_path}")
+    print(f"📄 Tableau LaTeX enregistré dans : {latex_path}")
 
     
     
@@ -401,8 +456,8 @@ def process_directory(fits_root_folder, output_root_folder):
 
 # === LANCEMENT ===
 #folder_name = "test1/"
-folder_name = "V854_Cen/"
-#folder_name = "large_log_+/"
+#folder_name = "V854_Cen/"
+folder_name = "large_log_+/"
 #folder_name = "resolved_log/"
 #folder_name = "all_resolved_log/"
 input_path = "/home/nbadolo/Bureau/Aymard/Donnees_sph/Gaussian/Input/" + folder_name
