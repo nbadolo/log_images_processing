@@ -43,7 +43,6 @@ from skimage.measure import EllipseModel
 from matplotlib.path import Path
 from matplotlib.colors import to_hex
 from matplotlib.ticker import FuncFormatter
-from AymardPack import process_fits_image as pfi  # Pour le traitement des pixels chauds/froids
 
 # --- Ajout : extraction des distances depuis une table CSV ---
 def read_csv_distances(csv_path):
@@ -99,7 +98,6 @@ star_filters = {
     'R_Crt':    ('alone', ['N_R']),
     'SW_Col':   ('both', ['V_N_R']),
     'W_Hya':    ('both',  ['Cnt820_Cnt748']),
-    #'W_Hya':    ('alone', ['V']),
     'SW_Vir':   ('alone', ['N_R']),
     'V_Hya':    ('both', ['V_N_R']),
     'Alpha_Her':('both', ['V_Cnt748']),
@@ -112,16 +110,14 @@ star_filters = {
     'DZ_Aqr':    ('both', ['V_N_R']),
     'Z_Peg':     ('both', ['V_N_R']),
     'W_Peg':     ('both', ['V_N_R']),
-    #'RT_Vir':   ('alone', ['Cnt820']),
-    'RT_Vir':   ('alone', ['V']),
+    'RT_Vir':   ('alone', ['Cnt820']),
     'RX_Lep':   ('alone', ['CntHa']),
     'Beta_Gru': ('both', ['V_N_R']), 
     'T_Mic':    ('both', ['V_N_R']),
     'R_Dor':    ('both',  ['Cnt820_Cnt748']),
     'AK_Hya':   ('alone', ['N_R']),
     'R_Leo':    ('both', ['V_Cnt748']),
-    # 'BK_Vir':   ('alone', ['Cnt820']),
-    'BK_Vir':   ('alone', ['V']),
+    'BK_Vir':   ('alone', ['Cnt820']),
     'T_Cet':    ('both',  ['CntHa_B_Ha']),
     'U_Del':    ('alone', ['CntHa']),
     'U_Her':    ('alone', ['VBB']),
@@ -152,7 +148,6 @@ star_specific_filter = {
     'R_Crt':    'N_R',
     'SW_Col':   'N_R',
     'W_Hya':    'Cnt748',
-    #'W_Hya':    'V',
     'SW_Vir':   'N_R',
     'V_Hya':    'N_R',
     'Alpha_Her': 'V',
@@ -165,16 +160,14 @@ star_specific_filter = {
     'DZ_Aqr':   'V',
     'Z_Peg':    'N_R',
     'W_Peg':     'N_R',
-    #'RT_Vir':   'Cnt820',
-    'RT_Vir':   'V',
+    'RT_Vir':   'Cnt820',
     'RX_Lep':   'CntHa',
     'Beta_Gru': 'V',
     'T_Mic':    'N_R',
     'R_Dor':    'Cnt820',
     'AK_Hya':   'N_R',
     'R_Leo':    'V',
-    # 'BK_Vir':   'Cnt820',
-    'BK_Vir':   'V',
+    'BK_Vir':   'Cnt820',
     'T_Cet':    'B_Ha',
     'U_Del':    'CntHa',
     'U_Her':    'VBB',
@@ -312,7 +305,7 @@ def radial_profile(image):
     radialprofile = tbin / np.maximum(nr, 1)
     return radialprofile
 
-fold_name ='BKvir_RTvir_Whya'
+fold_name ='large_log_+'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log_+/'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/newly_resolved/'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/clearly_resolved/'
@@ -361,10 +354,10 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     'RT_Vir': 240,
     'W_Peg': 280,
     'AK_Hya': 150,
-    'BK_Vir': 160,
+    'BK_Vir': 260,
     'U_Her': 200,
     'W_Peg': 200,
-    'W_Hya': 200,
+    'W_Hya': 240,
     'R_Crt': 240,
     'SW_Col': 200,
     'S_Pav': 200,
@@ -389,7 +382,6 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     'Y_Scl': 160,
     'V1943': 160,
     'Alpha_Her': 100,
-    'RT_Vir': 150,
     }
 
     # custom_dolp_contours = {
@@ -418,7 +410,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 'L02_Pup': [ 0.04, 0.1, 0.2, 0.3],
                 'R_Dor': [0.02, 0.03, 0.05, 0.07],
                 'Mira': [0.014, 0.04],
-                'W_Hya': [ 0.025, 0.049,  0.1, 0.17],
+                'W_Hya': [0.049,  0.1, 0.17],
                 'V854_Cen': [0.014, 0.035, 0.04],
             
     
@@ -442,14 +434,13 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             'GY_Aql': 2,
             'Mira': 6,
             'R_Dor': 1,
-            'RT_Vir': 2,
+            'RT_Vir': 3,
             'BK_Vir': 5,
             'Alpha_Her': 4,
             'Chi_Cyg': 4,
             '17_Lep': 30,
             'R_Leo': 5,
             'Ac_Cet': 30,
-            'RT_Vir': 6,
     
     }
     
@@ -464,11 +455,9 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     custom_dolp_vrange = {
         'R_Hya': {'vmin': None, 'vmax': 0.05},     # Limite le max à 0.04
         'AK_Hya': {'vmin': None, 'vmax': 0.035},   # Limite le max à 0.04
-        'BK_Vir': {'vmin': None, 'vmax': 0.03},   # Limite le max à 0.025
-        'RT_Vir': {'vmin': None, 'vmax': 0.055},    # Limite le max à 0.04
-        'W_Hya': {'vmin': None, 'vmax': 0.16},     # Limite le max à 0.04
+        'BK_Vir': {'vmin': None, 'vmax': 0.025},   # Limite le max à 0.025
         #'Pi.01_Gru': {'vmin': None, 'vmax': 0.04}, # Limite le max à 0.04
-        'GY_Aql': {'vmin': None, 'vmax': 0.13},    # Limite le max à 0.12
+        'GY_Aql': {'vmin': None, 'vmax': 0.12},    # Limite le max à 0.12
         'Mira': {'vmin': None, 'vmax': 0.05},      # Limite le max à 0.05
         'S_Pav': {'vmin': None, 'vmax': 0.05},     # Limite le max à 0.05
         'Y_Pav': {'vmin': None, 'vmax': 0.06},    # Limite le max à 0.04
@@ -665,23 +654,6 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
         # Extraction du plan z pour DoLP
         hdu_dolp = fits.open(file_DOLP_star)
         data_dolp = hdu_dolp[0].data
-        
-        # Appliquer le traitement de pixels chauds/froids uniquement pour BK_Vir
-        if star_name == 'BK_Vir':
-            if data_dolp.ndim == 3:
-                # Traiter chaque plan si c'est un cube 3D
-                for z_idx in range(data_dolp.shape[0]):
-                    # Traitement des pixels morts/chauds
-                    data_dolp[z_idx, :, :] = pfi(data_dolp[z_idx, :, :])
-                    # Atténuation supplémentaire des pixels chauds avec clipping au 97e percentile
-                    p_max = np.percentile(data_dolp[z_idx, :, :], 97)
-                    data_dolp[z_idx, :, :] = np.clip(data_dolp[z_idx, :, :], None, p_max)
-            else:
-                # Traiter directement si c'est une image 2D
-                data_dolp = pfi(data_dolp)
-                # Atténuation supplémentaire des pixels chauds avec clipping au 97e percentile
-                p_max = np.percentile(data_dolp, 97)
-                data_dolp = np.clip(data_dolp, None, p_max)
 
         #Extraction du plan z pour I
         hdu_I = fits.open(file_I_star)
@@ -987,16 +959,16 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 ax1.set_facecolor('#2a2a2a')
 
             if norm_dolp is not None:
-                im1 = ax1.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', norm=norm_dolp, extent=extent_dolp, interpolation='bilinear')
+                im1 = ax1.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', norm=norm_dolp, extent=extent_dolp, interpolation='bilinear')
             else:
-                im1 = ax1.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', vmin=vmin_dolp, vmax=vmax_dolp, extent=extent_dolp, interpolation='bilinear')
+                im1 = ax1.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', vmin=vmin_dolp, vmax=vmax_dolp, extent=extent_dolp, interpolation='bilinear')
             # Niveaux de contours automatiques selon la plage DoLP
             dolp_min = np.nanmin(sub_v_dolp_display)
             dolp_max = np.nanmax(sub_v_dolp_display)
             # Personnalisation des niveaux de contours DoLP pour certaines étoiles
             
             contour_levels = custom_dolp_contours.get(star_name, np.linspace(dolp_min, dolp_max, 5))
-            cs = ax1.contour(sub_v_dolp_display, levels=contour_levels, colors='#FFCC99', linewidths=1.5, origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
+            cs = ax1.contour(sub_v_dolp_display, levels=contour_levels, colors='white', linewidths=1.5, origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
             ax1.clabel(cs, inline=True, fontsize=10, fmt='%.2f')
             # Ajout de deux cercles autour de l'étoile centrale
             # Bloc complet cercles fixes DoLP, affichage et sauvegarde
@@ -1042,7 +1014,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [0, 7]
                         linestyles = ['--', '-.']
                     elif star_name == 'RT_Vir':
-                        radii_rstar = [0,  5]
+                        radii_rstar = [0,  23]
                         linestyles = ['--',  ':']
                     elif star_name == 'W_Peg':
                         radii_rstar = [0, 16]
@@ -1054,7 +1026,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [3, 21]
                         linestyles = ['--', '-.']
                     elif star_name == 'W_Hya':
-                        radii_rstar = [0,1.05]
+                        radii_rstar = [1.05, 8.5]
                         linestyles = ['--', '-.']
                     elif star_name == 'Mira':
                         radii_rstar = [10, 15]
@@ -1075,7 +1047,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [0, 10]
                         linestyles = ['--', '-.']
                     elif star_name == 'BK_Vir':
-                        radii_rstar = [0, 3]
+                        radii_rstar = [3, 10]
                         linestyles = ['--', '-.']
                     elif star_name == 'GY_Aql':
                         radii_rstar = [1.2, 17]
@@ -1105,7 +1077,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [0, 7]
                         linestyles = ['--', '-.']
                     elif star_name == 'RT_Vir':
-                        radii_rstar = [0, 5]
+                        radii_rstar = [5, 10, 23]
                         linestyles = ['--', ':', '-.']
                     elif star_name == 'W_Peg':
                         radii_rstar = [0, 12]
@@ -1117,7 +1089,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [3, 21]
                         linestyles = ['--', '-.']
                     elif star_name == 'W_Hya':
-                        radii_rstar = [0, 1.05]
+                        radii_rstar = [1.05, 8.5]
                         linestyles = ['--', '-.']
                     elif star_name == 'Mira':
                         radii_rstar = [0, 10]
@@ -1135,7 +1107,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [3, 20]
                         linestyles = ['--', '-.']
                     elif star_name == 'BK_Vir':
-                        radii_rstar = [0, 3]
+                        radii_rstar = [3, 35]
                         linestyles = ['--', '-.']
                     elif star_name == 'V854_Cen':
                         radii_rstar = [10, 140]
@@ -1251,10 +1223,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             # cb1.formatter.set_powerlimits((0, 0))
             # cb1.ax.yaxis.get_offset_text().set(size=label_size)
 
-            # Boîte en haut-gauche pour le nom de l'étoile
             ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=label_size, color='white', va='top')
-            
-            # Boîte en bas-gauche pour le filtre
             ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=label_size, color='white', va='bottom')
 
             # PI + ellipse à droite
@@ -1375,16 +1344,16 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 ax_dolp.set_facecolor('#2a2a2a')
             
             if norm_dolp is not None:
-                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', norm=norm_dolp, 
+                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', norm=norm_dolp, 
                                         extent=extent_dolp, interpolation='bilinear')
             else:
-                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', vmin=vmin_dolp, 
+                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', vmin=vmin_dolp, 
                                         vmax=vmax_dolp, extent=extent_dolp, interpolation='bilinear')
             # Pour les contours, utiliser les vraies valeurs min/max de l'image (pas les limites de la colorbar)
             dolp_min_real = np.nanmin(sub_v_dolp_display)
             dolp_max_real = np.nanmax(sub_v_dolp_display)
             contour_levels = custom_dolp_contours.get(star_name, np.linspace(dolp_min_real, dolp_max_real, 5))
-            cs_dolp = ax_dolp.contour(sub_v_dolp_display, levels=contour_levels, colors='#FFCC99', linewidths=1., origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
+            cs_dolp = ax_dolp.contour(sub_v_dolp_display, levels=contour_levels, colors='white', linewidths=1., origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
             ax_dolp.clabel(cs_dolp, inline=True, fontsize=10, fmt='%.2f')
             
             # Ajout des cercles comme dans le panel
@@ -1433,19 +1402,15 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 # ax_dolp.set_xlabel('Relative RA (mas)', fontsize=label_size)
                 # ax_dolp.set_ylabel('Relative Dec (mas)', fontsize=label_size)
                 ax_dolp.tick_params(axis='both', labelsize=label_size, width=1.2)
-                ax_dolp.locator_params(axis='x', nbins=5)
-                ax_dolp.locator_params(axis='y', nbins=5)
+                ax_dolp.locator_params(axis='x', nbins=5, labelsize=label_size)
+                ax_dolp.locator_params(axis='y', nbins=5, labelsize=label_size)
             else:
                 # Petit panel : PAS de graduations ni labels d'axes (inversé temporairement)
                 ax_dolp.tick_params(axis='both', labelsize=label_size, width=1.2)
                 ax_dolp.set_xticks([])
                 ax_dolp.set_yticks([])
                 ax_dolp.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
-            
-            # Boîte en haut-gauche pour le nom de l'étoile (figure DoLP seule)
             ax_dolp.text(0.02, 0.95, f'{star_name2}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='top')
-            
-            # Boîte en bas-gauche pour le filtre (figure DoLP seule)
             ax_dolp.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='bottom')
             
             # ax_dolp.set_xticks([])
@@ -2560,13 +2525,13 @@ def assemble_grand_panels_paginated(panel_dir, output_path_base, ncols=2, nrows=
 
         
 
-# panels_directory = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Panels/specific/'
-# output_base = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Panels/grand_panel/'
-# os.makedirs(output_base + 'png', exist_ok=True)
-# os.makedirs(output_base + 'pdf', exist_ok=True)
-# assemble_grand_panels_paginated(panels_directory, output_base, ncols=2, nrows=2,
-#                                 suffix='PI_DoLP_panel.png', panel_name='PI_panel',
-#                                 cell_size=(12, 5)) # Appel de la fonction pour assembler les panels paginés
+panels_directory = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Panels/specific/'
+output_base = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Panels/grand_panel/'
+os.makedirs(output_base + 'png', exist_ok=True)
+os.makedirs(output_base + 'pdf', exist_ok=True)
+assemble_grand_panels_paginated(panels_directory, output_base, ncols=2, nrows=7,
+                                suffix='PI_DoLP_panel.png', panel_name='PI_panel',
+                                cell_size=(12, 5)) # Appel de la fonction pour assembler les panels paginés
 
 
 

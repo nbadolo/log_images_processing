@@ -43,16 +43,31 @@ os.makedirs(dossier_logs, exist_ok=True)
 #timestamp = datetime.now().strftime('%Y%m%d_%H%M')
 log_file = os.path.join(dossier_logs, f'log_observations_{folder}.csv')
 
-# === Champs à extraire des headers FITS ===
+# === FITS header keywords to extract === francçais
 keywords = {
-    'DateTime': 'DATE-OBS',
-    'Object': 'OBJECT',
-    'ND': 'HIERARCH ESO INS3 OPTI2 NAME',
-    'Filter 1': 'HIERARCH ESO INS3 OPTI5 NAME',
-    'Filter 2': 'HIERARCH ESO INS3 OPTI6 NAME',
-    'Seeing': 'HIERARCH ESO OBS AMBI FWHM',
-    'Airmass': 'HIERARCH ESO OBS AIRM',
+    'Observation date'    : 'DATE-OBS',
+    'Program ID'          : 'HIERARCH ESO OBS PROG ID',
+    'Target name'         : 'OBJECT',
+    'Neutral density filter (ND)' : 'HIERARCH ESO INS3 OPTI2 NAME',
+    'Filter 1'            : 'HIERARCH ESO INS3 OPTI5 NAME',
+    'Filter 2'            : 'HIERARCH ESO INS3 OPTI6 NAME',
+    'Seeing'              : 'HIERARCH ESO OBS AMBI FWHM',
+    'Airmass'             : 'HIERARCH ESO OBS AIRM',
 }
+
+# # === Champs à extraire des en-têtes FITS === anglais
+# keywords = {
+#     'Date d’observation'     : 'DATE-OBS',
+#     'Programme d’observation': 'HIERARCH ESO OBS PROG ID',
+#     'PI du programme'        : 'HIERARCH ESO OBS PI-COI',
+
+#     'Objet observé'          : 'OBJECT',
+#     'Filtre neutre (ND)'     : 'HIERARCH ESO INS3 OPTI2 NAME',
+#     'Filtre 1'               : 'HIERARCH ESO INS3 OPTI5 NAME',
+#     'Filtre 2'               : 'HIERARCH ESO INS3 OPTI6 NAME',
+#     'Seeing'                 : 'HIERARCH ESO OBS AMBI FWHM',
+#     'Airmass'                : 'HIERARCH ESO OBS AIRM',
+# }
 
 # === Initialisation ===
 donnees = []
@@ -82,20 +97,80 @@ for dossier in os.listdir(racine):
                     with fits.open(chemin_fits) as hdul:
                         header = hdul[0].header
 
-                        # Extraire DATE-OBS et séparer date/heure
-                        datetime_obs = header.get(keywords['DateTime'], 'N/A')
-                        if 'T' in datetime_obs:
-                            date_part, time_part = datetime_obs.split('T')
+                        # 1) Date/Heure : privilégie DATE-OBS, sinon variants ESO fréquents
+                        datetime_obs = (
+                            header.get('DATE-OBS')
+                            or header.get(keywords['Observation date'])
+                            or header.get('HIERARCH ESO OBS START')
+                            or header.get('HIERARCH ESO TPL START')
+                            or 'N/A'
+                        )
+                        if isinstance(datetime_obs, bytes):
+                            datetime_obs = datetime_obs.decode(errors='ignore')
+                        if isinstance(datetime_obs, str) and 'T' in datetime_obs:
+                            date_part, time_part = datetime_obs.split('T', 1)
                         else:
-                            date_part, time_part = datetime_obs, ''
+                            date_part, time_part = (str(datetime_obs), '')
 
-                        # Nom de l'objet depuis le FITS (pas depuis le nom du dossier)
-                        nom_objet = header.get(keywords['Object'], 'N/A').strip()
+                        # Formatage heure: retire fractions/zone et garde HH:MM:SS, avec espaces autour des :
+                        time_display = ''
+                        if time_part:
+                            t = time_part.strip()
+                            # retire suffixes éventuels (Z, timezone)
+                            t = t.split('Z')[0].split('+')[0].split('-')[0]
+                            # garde uniquement HH:MM:SS
+                            t = t.split('.')[0]
+                            # complète si HH:MM seulement
+                            if len(t.split(':')) == 2:
+                                h, m = t.split(':')
+                                t = f"{h}:{m}:00"
+                            # espaces autour des deux :
+                            time_display = t.replace(':', ':')
 
-                        # Organiser les champs : Date, Time, Etoile, autres
-                        ligne = [date_part, time_part, nom_objet]
-                        for key in list(keywords.keys())[2:]:  # à partir de ND
-                            val = header.get(keywords[key], 'N/A')
+                        # 2) Nom de cible : OBJECT avec retombes possibles
+                        nom_objet = (
+                            header.get('OBJECT')
+                            or header.get(keywords['Target name'])
+                            or header.get('HIERARCH ESO OBS TARG NAME')
+                            or 'N/A'
+                        )
+                        if isinstance(nom_objet, bytes):
+                            nom_objet = nom_objet.decode(errors='ignore')
+                        nom_objet = nom_objet.strip()
+
+                        # 3) Program metadata
+                        prog_id = (
+                            header.get('HIERARCH ESO OBS PROG ID')
+                            or header.get(keywords['Program ID'])
+                            or 'N/A'
+                        )
+                        # pi_name = (
+                        #     #header.get('HIERARCH ESO OBS PI-COI ID')
+                        #     header.get('HIERARCH ESO OBS PI-COI NAME')
+                        #     or header.get('HIERARCH ESO OBS PI-COI')
+                        #     or 'N/A'
+                        # )
+                        if isinstance(prog_id, bytes):
+                            prog_id = prog_id.decode(errors='ignore')
+                        # if isinstance(pi_name, bytes):
+                        #     pi_name = pi_name.decode(errors='ignore')
+                        prog_id = str(prog_id).strip()
+                        #pi_name = str(pi_name).strip()
+
+                        # 4) Construire la ligne dans l'ordre de header_final
+                        #ligne = [date_part, time_part, nom_objet, prog_id]
+                        ligne = [date_part, time_display, nom_objet, prog_id]
+                        champs = [
+                            'Neutral density filter (ND)',
+                            'Filter 1',
+                            'Filter 2',
+                            'Seeing',
+                            'Airmass',
+                        ]
+                        for k in champs:
+                            val = header.get(keywords[k], 'N/A')
+                            if isinstance(val, bytes):
+                                val = val.decode(errors='ignore')
                             ligne.append(val)
 
                         donnees.append(ligne)
@@ -128,8 +203,11 @@ for ligne in donnees:
         derniere_date = ligne[0]
 
 # === En-têtes dans le bon ordre ===
-header_final = ['Date', 'Time', 'Target', 'ND', 'Filter 1', 'Filter 2', 'Seeing', 'Airmass']
-
+header_final = [
+    'Date', 'Time', 'Target',
+    'Program ID',
+    'ND', 'Filter 1', 'Filter 2', 'Seeing', 'Airmass'
+]
 # === Écriture CSV ===
 with open(log_file, mode='w', newline='') as csvfile:
     writer = csv.writer(csvfile)
@@ -188,14 +266,15 @@ print(f"📎 Tableau LaTeX stylisé (tabular seul) sauvegardé dans : {latex_tab
 # === Version française du tableau ===
 # Dictionnaire de traduction des en-têtes
 french_headers = {
-    'Date': 'Date',
-    'Time': 'Heure',
-    'Target': 'Cible',
-    'ND': 'ND',
-    'Filter 1': 'Filtre 1',
-    'Filter 2': 'Filtre 2',
-    'Seeing': 'Seeing',
-    'Airmass': 'Airmass',
+    'Date'          : 'Date',
+    'Time'          : 'Heure',
+    'Program ID'    : 'ID Programme',
+    'Target'        : 'Cible',
+    'ND'            : 'Filtre ND',
+    'Filter 1'      : 'Filtre 1',
+    'Filter 2'      : 'Filtre 2',
+    'Seeing'        : 'Seeing',
+    'Airmass'       : 'Airmass',
 }
 
 # Construction du tableau tabular français
@@ -244,7 +323,7 @@ hip_ids = df_sample["Object"].astype(str).str.replace('_', ' ').str.strip()
 hip_to_name = dict(zip(df_names["HIP_SIMBAD"].astype(str).str.strip(), df_names["Nom"]))
 object_names = [hip_to_name.get(hip_id, "") for hip_id in hip_ids]
 
-# Ajoute la colonne "Object name" UNE SEULE FOIS
+# Ajout de la colonne "Object name"
 if "Object name" not in df_sample.columns:
     df_sample.insert(0, "Object name", object_names)
 # Création du dictionnaire de correspondance HIP_SIMBAD → Nom
@@ -273,7 +352,7 @@ for idx, col in enumerate(columns_filtered):
     elif col == "logg":
         columns_filtered[idx] = r"\begin{tabular}{c} logg\\(dex) \end{tabular}"
 
-sample_params = "\\begin{tabular}{ll" + "c" * (len(columns_filtered) - 2) + "}\n"
+sample_params = "\\begin{tabular}{l" + "c" * (len(columns_filtered) - 1) + "}\n"
 sample_params += "\\toprule\n\\hline\n"
 
 header_row_filtered = " & ".join(columns_filtered) + " \\\\\n"

@@ -38,6 +38,11 @@ from skimage import measure, draw
 import pandas as pd
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import re
+from astropy.wcs import WCS
+
+
+
+
 
 # --- Ajout : extraction des distances depuis une table CSV ---
 def read_csv_distances(csv_path):
@@ -51,6 +56,7 @@ def read_csv_distances(csv_path):
     if 'Object' in df.columns:
         df = df.rename(columns={'Object': 'Étoile'})
     return df
+
 
 # Adapter le chemin du fichier CSV
 csv_dist_path = '/home/nbadolo/Bureau/Aymard/Tables/ML/Hipparcos/Hip/Sample_hip.csv'
@@ -135,6 +141,59 @@ star_filters = {
    
 }
 
+star_specific_filter = {
+    'Y_Pav':    'N_R',
+    'R_Hor':    'N_R',
+    'R_Scl':    'N_R',
+    'Y_Scl':    'V',
+    'R_Crt':    'N_R',
+    'SW_Col':   'N_R',
+    'W_Hya':    'Cnt748',
+    'SW_Vir':   'N_R',
+    'V_Hya':    'N_R',
+    'Alpha_Her': 'V',
+    'R_Hya':    'CntHa',
+    'Chi_Cyg':  'Cnt748',
+    'Z_Eri':    'V',
+    'R_Peg':    'V',
+    'BW_Oct':   'N_R',
+    'AC_Cet':   'V',
+    'DZ_Aqr':   'V',
+    'Z_Peg':    'N_R',
+    'W_Peg':     'N_R',
+    'RT_Vir':   'Cnt820',
+    'RX_Lep':   'CntHa',
+    'Beta_Gru': 'V',
+    'T_Mic':    'N_R',
+    'R_Dor':    'Cnt820',
+    'AK_Hya':   'N_R',
+    'R_Leo':    'V',
+    'BK_Vir':   'Cnt820',
+    'T_Cet':    'B_Ha',
+    'U_Del':    'CntHa',
+    'U_Her':    'VBB',
+    'W_Aql':    'VBB',
+    'V_PsA':    'N_R',
+    'R_Aql':    'N_R',
+    'S_Pav':    'N_R',
+    'GY_Aql':   'VBB',
+    'SV_Aqr':   'VBB',
+    'Ups_Cet':  'N_R',
+    'V1943_Sgr': 'N_R',
+    'Psi_Phe':  'V',
+    'S_Lep':    'I_PRIM',
+    '17_Lep':   'I_PRIM',
+    'L02_Pup':  'V',
+    'CW_Cnc':   'I_PRIM',
+    'Mira':     'B_Ha',
+    'Pi.01_Gru': 'N_R',
+}
+
+clearly_resolved = [
+    "AK_Hya", "R_Hya", "U_Her", "S_Pav", "Mira", "W_Aql", "R_Crt", "R_Leo",
+    "R_Dor", "BK_Vir", "V_PsA", "SW_Col", "GY_Aql", "SW_Vir", "RT_Vir",
+    "W_Hya", "L02_Pup", "W_Peg"
+]
 
 
 results = []
@@ -222,7 +281,21 @@ def radial_profile(image):
     nr = np.bincount(r.ravel())
     radialprofile = tbin / np.maximum(nr, 1)
     return radialprofile
-def log_image(folder_name, star_name, obsmod):
+
+
+fold_name ='First'
+#large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log_+/'
+#large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/newly_resolved/'
+#large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/clearly_resolved/'
+#large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/ICHTUS/'
+#large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/BK_Vir/'
+#large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/Already_observed/'
+large_log_dir = f'/home/nbadolo/Bureau/Aymard/Donnees_sph/{fold_name}/'
+
+
+def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
+    import time
+    start_time = time.time()
     # Récupération de la distance pour l'étoile (une seule fois)
     distance_star = None
     if 'dist_table' in globals():
@@ -244,12 +317,27 @@ def log_image(folder_name, star_name, obsmod):
     nDim = 1024
     nSubDim = 100
     size = (nSubDim, nSubDim)
+    
+    # Dictionnaire pour la taille du champ de vue DoLP selon l'étoile
+    custom_dolp_cutout_size = {
+    'W_Aql': 320,
+    'Mira': 260,
+    'RT_Vir': 280,
+    'W_Peg': 280,
+    }
+
+    nSubDim_DOLP = custom_dolp_cutout_size.get(star_name, 200)
+    size_DOLP = (nSubDim_DOLP, nSubDim_DOLP)
     #lst_threshold = [0.01, 0.015, 0.02, 0.03, 0.05, 0.07, 0.1]
     lst_threshold = np.linspace(0.005, 0.1, 50)  # 50 seuils de 0.5% à 10% 
     #lst_threshold = np.linspace(0, 0.1, 100)  # 100 seuils de 0% à 10%
     pix2mas = 3.4
     position = (nDim // 2, nDim // 2)
-    label_size3 = 12
+    
+    label_size_small_panel = 14
+    label_size_great_panel = 18
+    label_size = label_size_small_panel
+    
     # Calcul des limites en mas
     # pour l'affichage
     x_min = -pix2mas * nSubDim // 2
@@ -258,12 +346,15 @@ def log_image(folder_name, star_name, obsmod):
     y_max = pix2mas * (nSubDim // 2 - 1)
 
     # Nettoyage complet des répertoires de sortie avant traitement
-    outdir2 = f'/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours'
+    outdir_panels = f'/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Panels'
+    outdir_uniq = f'/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Unique'
     outdir = f'/home/nbadolo/Bureau/Aymard/Donnees_sph/{folder_name}/{star_name}/plots/fits/log_scale/fully_automatic/'
     
     # Création des répertoires s'ils n'existent pas
-    os.makedirs(outdir2, exist_ok=True)
+    os.makedirs(outdir_panels, exist_ok=True)
+    os.makedirs(outdir_uniq, exist_ok=True)
     os.makedirs(outdir, exist_ok=True)
+    #os.makedirs(dolp_specific_dir, exist_ok=True)
     
     # print(f"Nettoyage complet des répertoires pour {star_name}...")
     
@@ -335,8 +426,8 @@ def log_image(folder_name, star_name, obsmod):
                 dolp_z = data_dolp[z, :, :]
             else:
                 dolp_z = data_dolp
-            # Découpe DoLP avec exactement la même position et taille que PI
-            cutout_dolp = Cutout2D(dolp_z, position=position, size=size)
+            # Découpe DoLP avec une taille plus grande pour le champ de vue
+            cutout_dolp = Cutout2D(dolp_z, position=position, size=size_DOLP)
             sub_v_dolp = cutout_dolp.data
             # hdu_dolp.close()  # Retiré car hdu_dolp est une HDUList, pas un PrimaryHDU
 
@@ -442,7 +533,7 @@ def log_image(folder_name, star_name, obsmod):
             })
             print(f"Traitement : filtre={fltr_arr[z]}, seuil={best_threshold:.4f}, fit_cost={best_cost:.4f}")
 
-            # Plot unique contour stylé (log uniquement)
+            # Plot PI avec contour et centre (champ de vue standard)
             plt.figure(figsize=(6, 5))
             ax = plt.gca()
             im = ax.imshow(
@@ -455,24 +546,27 @@ def log_image(folder_name, star_name, obsmod):
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
             cbar = plt.colorbar(im, cax=cax)
-            #cbar.set_label('Log$_{10}$(PI)', fontsize=14)
             cbar.ax.tick_params(labelsize=14, width=1.2)
-            # for t in cbar.ax.get_yticklabels(): # pour mettre en gras les labels de la colorbar
-            #     t.set_fontweight('bold')
+            # Affiche l’exposant/scientific notation à côté de la colorbar
+            cbar.formatter.set_powerlimits((0, 0))
+            cbar.update_ticks()
+            offset_text = cbar.ax.yaxis.get_offset_text()
+            offset_str = offset_text.get_text()
+            offset_text.set_visible(False)
+            cbar.ax.text(1.25, 0.5, offset_str, transform=cbar.ax.transAxes, fontsize=14, color='black', va='center', ha='left')
 
-            ax.plot(x_contour_mas, y_contour_mas, color='cyan', linewidth=2, linestyle='--')  # Ligne contour désactivée temporairement
+            # Adapter les coordonnées des contours et du centre
+            x_contour_mas = (Ell_rot[0, :] - nSubDim // 2) * pix2mas
+            y_contour_mas = (Ell_rot[1, :] - nSubDim // 2) * pix2mas
+            x_centroid_mas = (x_f - nSubDim // 2) * pix2mas
+            y_centroid_mas = (y_f - nSubDim // 2) * pix2mas
+            ax.plot(x_contour_mas, y_contour_mas, color='cyan', linewidth=2, linestyle='--')
             ax.scatter([x_centroid_mas], [y_centroid_mas], color='red', marker='x')
-            # ax.set_xlabel('RA (mas)', fontweight='bold')
-            # ax.set_ylabel('DEC (mas)', fontweight='bold')
-            # Ajustement des axes
             ax.set_xlabel("Relative RA (mas)", fontsize=14)
             ax.set_ylabel("Relative Dec (mas)", fontsize=14)
             ax.tick_params(axis='both', labelsize=14, width=1.2)
-            # for label in ax.get_xticklabels() + ax.get_yticklabels():
-            #     label.set_fontweight('bold')
             ax.locator_params(axis='x', nbins=5)
             ax.locator_params(axis='y', nbins=5)
-            # Annotations texte pour le nom de l'étoile et le filtre
             ax.text(0.02, 0.95, f'{star_name2}', transform=ax.transAxes, fontsize=14, color='white', va='top')
             ax.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax.transAxes, fontsize=14, color='white', va='bottom')
 
@@ -480,110 +574,127 @@ def log_image(folder_name, star_name, obsmod):
             fig_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_unique_max_contour_for_Pol_Intensity'
             plt.savefig(os.path.join(outdir, fig_name + '.png'), dpi=300, bbox_inches='tight')
             plt.savefig(os.path.join(outdir, fig_name + '.pdf'), dpi=300, bbox_inches='tight') 
-            plt.savefig(os.path.join(outdir2, fig_name + '.png'), dpi=300, bbox_inches='tight')
-            plt.savefig(os.path.join(outdir2, fig_name + '.pdf'), dpi=300, bbox_inches='tight')
-            print(f"Figure contour sauvegardée : {os.path.join(outdir2, fig_name + '.png')}", flush=True)
+            plt.savefig(os.path.join(outdir_uniq, fig_name + '.png'), dpi=300, bbox_inches='tight')
+            plt.savefig(os.path.join(outdir_uniq, fig_name + '.pdf'), dpi=300, bbox_inches='tight')
+            print(f"Figure contour sauvegardée : {os.path.join(outdir_uniq, fig_name + '.png')}", flush=True)
             #plt.savefig(os.path.join(outdir, fig_name + '.eps'), format='eps', dpi=300, bbox_inches='tight')
             #plt.show() 
             plt.close()
 
-            # === Creation du panel PI & DoLP+fit ===
+            # === Creation du panel DoLP+contours  & PI+fit ===
 
             fig_panel, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
             # DoLP+isocontours à gauche
-            im1 = ax1.imshow(sub_v_dolp, cmap='plasma', origin='lower', vmin=np.nanmin(sub_v_dolp), vmax=np.nanmax(sub_v_dolp), extent=[x_min, x_max, y_min, y_max])
+            # Recalcule les axes pour le champ DoLP élargi
+            x_min_DOLP = -pix2mas * nSubDim_DOLP // 2
+            x_max_DOLP = pix2mas * (nSubDim_DOLP // 2 - 1)
+            y_min_DOLP = -pix2mas * nSubDim_DOLP // 2
+            y_max_DOLP = pix2mas * (nSubDim_DOLP // 2 - 1)
+            im1 = ax1.imshow(sub_v_dolp, cmap='plasma', origin='lower', vmin=np.nanmin(sub_v_dolp), vmax=np.nanmax(sub_v_dolp), extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
             # Niveaux de contours automatiques selon la plage DoLP
             dolp_min = np.nanmin(sub_v_dolp)
             dolp_max = np.nanmax(sub_v_dolp)
             contour_levels = np.linspace(dolp_min, dolp_max, 5)
-            cs = ax1.contour(sub_v_dolp, levels=contour_levels, colors='white', linewidths=1.5, origin='lower', extent=[x_min, x_max, y_min, y_max])
+            cs = ax1.contour(sub_v_dolp, levels=contour_levels, colors='white', linewidths=1.5, origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
             ax1.clabel(cs, inline=True, fontsize=10, fmt='%.2f')
             # Ajout de deux cercles autour de l'étoile centrale
+            # Bloc complet cercles fixes DoLP, affichage et sauvegarde
             from matplotlib.patches import Circle
-            # Centre de l'image (ou ellipse ajustée si dispo)
-            center_x = (x_max + x_min) / 2
-            center_y = (y_max + y_min) / 2
-            # Rayons physiques en mas (exemple: 200 et 400 mas)
-            radius1_mas = 50
-            radius2_mas = 80
-            # Conversion en AU si distance disponible
-            if distance_star is not None:
-                radius1_au = radius1_mas * distance_star * 0.001
-                radius2_au = radius2_mas * distance_star * 0.001
+            center_x = (x_max_DOLP + x_min_DOLP) / 2
+            center_y = (y_max_DOLP + y_min_DOLP) / 2
+            R_sun_cm = 6.957e10
+            if 'affected_stars_dolp' not in globals():
+                global affected_stars_dolp
+                affected_stars_dolp = []
+            star_name_clean = clean_star_name(star_name)
+            match_row = dist_table[dist_table['Étoile'].apply(clean_star_name) == star_name_clean]
+            use_fixed_circles = False
+            radius_star_rsun = None
+            distance_star_pc = None
+            if not match_row.empty:
+                radius_star_rsun = match_row.iloc[0]['Radius']
+                distance_star_pc = match_row.iloc[0]['Distance']
+                if (distance_star_pc < 150) or (radius_star_rsun > 500):
+                    use_fixed_circles = True
+                    affected_stars_dolp.append({'Étoile': star_name, 'Distance_pc': distance_star_pc, 'Radius_Rsun': radius_star_rsun})
+            # Création des cercles en rayons stellaires
+            if distance_star_pc is not None and radius_star_rsun is not None and radius_star_rsun > 0 and distance_star_pc > 0:
+                R_sun_cm = 6.957e10
+                radius_star_cm = radius_star_rsun * R_sun_cm
+                distance_star_cm = distance_star_pc * 3.0857e18
+                radius_star_rad = radius_star_cm / distance_star_cm
+                radius_stellar_mas = radius_star_rad * 206265 * 1000
+                if use_fixed_circles:
+                    radii_rstar = [3, 5, 10]  # 3 cercles en R*
+                    linestyles = ['--', '-.', ':']
+                else:
+                    radii_rstar = [3, 5, 10, 20]  # 4 cercles en R*
+                    linestyles = ['--', '-.', ':', '-.']
+                radii_mas = [r * radius_stellar_mas for r in radii_rstar]
+                circles = [Circle((center_x, center_y), r_mas, edgecolor='orange', facecolor='none', lw=2, linestyle=ls)
+                           for r_mas, ls in zip(radii_mas, linestyles)]
+                for circ in circles:
+                    ax1.add_patch(circ)
+                legend_unit = 'R$_\star$'
             else:
-                radius1_au = radius2_au = None
-            # Les deux cercles en orange
-            circ1 = Circle((center_x, center_y), radius1_mas, edgecolor='orange', facecolor='none', lw=2, linestyle='--', label=f'{radius1_mas} mas')
-            circ2 = Circle((center_x, center_y), radius2_mas, edgecolor='orange', facecolor='none', lw=2, linestyle='-.', label=f'{radius2_mas} mas')
-            ax1.add_patch(circ1)
-            ax1.add_patch(circ2)
+                print(f"⚠️ Distance ou rayon stellaire non trouvés pour l'étoile {star_name}, cercles non tracés.")
             # Croix rouge au centre
             ax1.scatter([center_x], [center_y], color='red', marker='x', s=80, zorder=10)
-            # Ajout d'une barre d'échelle physique en AU en bas à droite
-            # Print déplacé dans le bloc distance_star
-            if distance_star is not None:
-                # Conversion AU -> mas
-                scale_au = 5  # AU
-                scale_mas = scale_au / (distance_star * 0.001)
-                # Conversion mas -> largeur en axes
-                bar_length_axes = scale_mas / (x_max - x_min)
-                # Position en bas à droite
-                x_bar_axes = 0.98 - bar_length_axes  # fin à 0.98
+            # Ajout d'une barre d'échelle physique en R* en bas à droite
+            if distance_star_pc is not None and radius_star_rsun is not None and radius_star_rsun > 0 and distance_star_pc > 0:
+                # Barre d'échelle en R*
+                scale_val = 10  # 10 R*
+                R_sun_cm = 6.957e10
+                radius_star_cm = radius_star_rsun * R_sun_cm
+                distance_star_cm = distance_star_pc * 3.0857e18
+                radius_star_rad = radius_star_cm / distance_star_cm
+                radius_stellar_mas = radius_star_rad * 206265 * 1000
+                scale_mas = scale_val * radius_stellar_mas
+                legend_unit = 'R$_\star$'
+                # Conversion mas -> largeur en axes (champ DoLP)
+                bar_length_axes = scale_mas / (x_max_DOLP - x_min_DOLP)
+                x_bar_axes = 0.90 - bar_length_axes  # fin à 0.98
                 y_bar_axes = 0.04  # bas
                 ax1.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax1.transAxes, solid_capstyle='butt')
-                ax1.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_au:.0f} AU', color='white', fontsize=14, ha='center', va='bottom',  transform=ax1.transAxes)
+                ax1.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=14, ha='center', va='bottom',  transform=ax1.transAxes)
             else:
-                print(f"⚠️ Distance non trouvée pour l'étoile {star_name}, barre d'échelle non tracée.")
-            # ...rien à tracer, seule la barre blanche de 10 AU est conservée...
+                print(f"⚠️ Distance ou rayon stellaire non trouvés pour l'étoile {star_name}, barre d'échelle non tracée.")
             
-            # Détection automatique d'une structure (anneau/coquille) et tracé d'un arc (désactivé temporairement)
-            # from skimage.measure import find_contours
-            # from matplotlib.patches import Arc
-            # level_detect = (dolp_min + dolp_max) / 2
-            # contours_auto = find_contours(sub_v_dolp, level_detect)
-            # if contours_auto:
-            #     largest_contour = max(contours_auto, key=lambda x: x.shape[0])
-            #     y_contour, x_contour = largest_contour[:, 0], largest_contour[:, 1]
-            #     x_coords = x_min + (x_contour / sub_v_dolp.shape[1]) * (x_max - x_min)
-            #     y_coords = y_min + (y_contour / sub_v_dolp.shape[0]) * (y_max - y_min)
-            #     x_center = np.mean(x_coords)
-            #     y_center = np.mean(y_coords)
-            #     radii = np.sqrt((x_coords - x_center)**2 + (y_coords - y_center)**2)
-            #     radius_mean = np.mean(radii)
-            #     arc_auto = Arc((x_center, y_center), width=2*radius_mean, height=2*radius_mean,
-            #                   angle=0, theta1=0, theta2=360, color='deepskyblue', lw=2, linestyle='--')
-            #     ax1.add_patch(arc_auto)
-            # Ajout d'un exemple d'arc (portion de cercle)
-            
-            # arc_center_x = (x_max + x_min) / 2
-            # arc_center_y = (y_max + y_min) / 2
-            # arc_radius = (x_max - x_min) / 4
-            # arc_angle_start = 30    # angle de début (degrés)
-            # arc_angle_end = 120     # angle de fin (degrés)
-            # arc = Arc((arc_center_x, arc_center_y),
-            #           width=2*arc_radius, height=2*arc_radius,
-            #           angle=0, theta1=arc_angle_start, theta2=arc_angle_end,
-            #           color='lime', lw=2)
-            # ax1.add_patch(arc)
-            #ax1.set_title('Degré de polarisation (DoLP)', fontsize=14)
-            ax1.set_xlabel('Relative RA (mas)', fontsize=14)
-            ax1.set_ylabel('Relative Dec (mas)', fontsize=14)
-            ax1.tick_params(axis='both', labelsize=14, width=1.2)
+
+            ax1.set_xlabel('Relative RA (mas)', fontsize=label_size)
+            ax1.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+
+            # #Personnalisation des labels selon l'étoile pour les grands panels
+            # if star_name2 in ['U Her','R Crt', 'RX Lep', 'SV Aqr', 'R Peg', 'Chi Cyg', 'R Hya', 'T Mic']:
+            #     ax1.set_xlabel('Relative RA (mas)', fontsize=label_size)
+            # else:
+            #     ax1.set_xlabel('', fontsize=label_size)
+
+            # if star_name2 in ['U Her', 'RX Lep', 'R Peg', 'R Hya']:
+            #     ax1.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+            # else:
+            #     ax1.set_ylabel('', fontsize=label_size)
+
+            ax1.tick_params(axis='both', labelsize=label_size, width=1.2)
             # for label in ax1.get_xticklabels() + ax1.get_yticklabels():
             #     label.set_fontweight('bold')
             ax1.locator_params(axis='x', nbins=5)
             ax1.locator_params(axis='y', nbins=5)
-            
+
+            # ax1.set_xticks([])
+            # ax1.set_yticks([])
+            # ax1.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+
             divider1 = make_axes_locatable(ax1)
             cax1 = divider1.append_axes('right', size='5%', pad=0.03)
             cb1 = fig_panel.colorbar(im1, cax=cax1, orientation='vertical')
-            cb1.ax.tick_params(labelsize=14)
+            cb1.ax.tick_params(labelsize=label_size)
             cmapProp = {'drawedges': True}            
             cb1.formatter.set_powerlimits((0, 0))
-            cb1.ax.yaxis.get_offset_text().set(size=14)
-            
-            ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=14, color='white', va='top')
-            ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=14, color='white', va='bottom')
+            cb1.ax.yaxis.get_offset_text().set(size=label_size)
+
+            ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=label_size, color='white', va='top')
+            ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=label_size, color='white', va='bottom')
 
             # PI + ellipse à droite
             im2 = ax2.imshow(
@@ -592,44 +703,162 @@ def log_image(folder_name, star_name, obsmod):
                 origin='lower',
                 extent=[x_min+1, x_max, y_min+1, y_max]
             )
-            # Ajout orientation N-W en haut à droite sur la figure PI
-            arrow_len = 0.03 * (x_max - x_min)  # longueur réduite
-            x_arrow = x_max - 0.09 * (x_max - x_min)  # plus à droite
-            y_arrow = y_max - 0.13 * (y_max - y_min)  # plus haut
+            # Ajout orientation N-W en bas à droite sur la figure PI (même position que la légende UA du DoLP)
+            arrow_len = 0.03 * (x_max - x_min)
+            x_arrow = x_max - 0.04 * (x_max - x_min)
+            y_arrow = y_min + 0.04 * (y_max - y_min)
             # Flèche Nord (verticale vers le haut)
             ax2.arrow(x_arrow, y_arrow, 0, arrow_len, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
             # Flèche Ouest (horizontale vers la gauche)
             ax2.arrow(x_arrow, y_arrow, -arrow_len, 0, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
-            offset_label = 8  # décalage fixe en mas
-            ax2.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=14, ha='center', va='bottom')
-            ax2.text(x_arrow - arrow_len - offset_label, y_arrow, 'W', color='white', fontsize=14, ha='right', va='center')
-            #ax2.set_title('Morphologie PI + ellipse', fontsize=14)
-            ax2.set_xlabel('Relative RA (mas)', fontsize=14)
-            #ax2.set_ylabel('Relative Dec (mas)', fontsize=14)
-            ax2.tick_params(axis='both', labelsize=14, width=1.2)
+            offset_label = 8
+            ax2.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom')
+            ax2.text(x_arrow - arrow_len - offset_label, y_arrow, 'W', color='white', fontsize=label_size, ha='right', va='center')
+            #ax2.set_title('Morphologie PI + ellipse', fontsize=label_size)
+            ax2.set_xlabel('Relative RA (mas)', fontsize=label_size)
+            # # Personnalisation des labels selon l'étoile pour les grands panels
+            # if star_name2 in ['U Her','R Crt', 'RX Lep', 'SV Aqr', 'R Peg', 'Chi Cyg', 'R Hya', 'T Mic']:
+            #     ax2.set_xlabel('Relative RA (mas)', fontsize=label_size)
+            # else:
+            #     ax2.set_xlabel('', fontsize=label_size)
+            #ax2.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+            ax2.tick_params(axis='both', labelsize=label_size, width=1.2)
             # for label in ax2.get_xticklabels() + ax2.get_yticklabels():
             #     label.set_fontweight('bold')
             ax2.locator_params(axis='x', nbins=5)
             ax2.locator_params(axis='y', nbins=5)
             ax2.axes.yaxis.set_ticklabels([])  # Pas de labels y sur la 2e image
 
+            # ax2.set_xticks([])
+            # ax2.set_yticks([])
+            # ax2.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+
             divider2 = make_axes_locatable(ax2)
             cax2 = divider2.append_axes('right', size='5%', pad=0.03)
             cb2 = fig_panel.colorbar(im2, cax=cax2, orientation='vertical')
-            cb2.ax.tick_params(labelsize=14)
-            ax2.plot(x_contour_mas, y_contour_mas, color='cyan', linewidth=2, linestyle='--')
+            cb2.ax.tick_params(labelsize=label_size)
+            cb2.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.1f}"))
+            #ax2.plot(x_contour_mas, y_contour_mas, color='cyan', linewidth=2, linestyle='--')
             ax2.scatter([x_centroid_mas], [y_centroid_mas], color='red', marker='x')
-            ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=14, color='white', va='top')
-            ax2.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax2.transAxes, fontsize=14, color='white', va='bottom')
+            ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=label_size, color='white', va='top')
+            ax2.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax2.transAxes, fontsize=label_size, color='white', va='bottom')
 
             plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10, wspace=0.15)
             fig_panel_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_PI_DoLP_panel'
             plt.savefig(os.path.join(outdir, fig_panel_name + '.png'), dpi=300, bbox_inches='tight')
             plt.savefig(os.path.join(outdir, fig_panel_name + '.pdf'), dpi=300, bbox_inches='tight')
-            plt.savefig(os.path.join(outdir2, fig_panel_name + '.png'), dpi=300, bbox_inches='tight')
-            plt.savefig(os.path.join(outdir2, fig_panel_name + '.pdf'), dpi=300, bbox_inches='tight')
+            plt.savefig(os.path.join(outdir_panels +'/png', fig_panel_name + '.png'), dpi=300, bbox_inches='tight')
+            plt.savefig(os.path.join(outdir_panels +'/pdf', fig_panel_name + '.pdf'), dpi=300, bbox_inches='tight')
+            if fltr_arr[z] == star_specific_filter.get(star_name, None):
+                specific_dir = os.path.join(outdir_panels, 'specific')
+                if not os.path.exists(specific_dir):
+                    os.makedirs(specific_dir)
+                # On ne sauvegarde que si aucune image pour ce filtre n'existe déjà
+                already_exists = any(str(fltr_arr[z]) in fname and star_name in fname for fname in os.listdir(specific_dir))
+                if not already_exists:
+                    fig_panel_name_unique = f"{star_name}_{mode}_{fltr_arr[z]}_PI_DoLP_panel"
+                    fig_path = os.path.join(specific_dir, fig_panel_name_unique + '.png')
+                    plt.savefig(fig_path, dpi=300, bbox_inches='tight')
+                    print(f"Figure panel PI+DoLP sauvegardée : {fig_path}", flush=True)
+                else:
+                    print(f"Panel déjà présent pour {star_name} [{fltr_arr[z]}], non sauvegardé.", flush=True)
+                plt.close(fig_panel)
+            else:
+                plt.close(fig_panel)
+                print(f"Panel ignoré pour {star_name} [{fltr_arr[z]}] : filtre non spécifique.", flush=True)
+
+            # Enregistrement de la figure de gauche (DoLP seule, avec contours et cercles) dans un dossier dédié
+            outdir_dolp_only = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/DoLP_only'
+            os.makedirs(outdir_dolp_only, exist_ok=True)
+            fig_dolp, ax_dolp = plt.subplots(figsize=(6, 5))
+            im_dolp = ax_dolp.imshow(sub_v_dolp, cmap='plasma', origin='lower', vmin=np.nanmin(sub_v_dolp), vmax=np.nanmax(sub_v_dolp), extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
+            dolp_min = np.nanmin(sub_v_dolp)
+            dolp_max = np.nanmax(sub_v_dolp)
+            contour_levels = np.linspace(dolp_min, dolp_max, 5)
+            cs_dolp = ax_dolp.contour(sub_v_dolp, levels=contour_levels, colors='white', linewidths=1.5, origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
+            ax_dolp.clabel(cs_dolp, inline=True, fontsize=10, fmt='%.2f')
+            # Ajout des cercles comme dans le panel
+            for r_mas, ls in zip(radii_mas, linestyles):
+                circ_dolp = Circle((center_x, center_y), r_mas, edgecolor='orange', facecolor='none', lw=2, linestyle=ls)
+                ax_dolp.add_patch(circ_dolp)
+            # Barre d'échelle en R* (identique au panel)
+            if distance_star_pc is not None and radius_star_rsun is not None and radius_star_rsun > 0 and distance_star_pc > 0:
+                scale_val = 10  # 10 R*
+                R_sun_cm = 6.957e10
+                radius_star_cm = radius_star_rsun * R_sun_cm
+                distance_star_cm = distance_star_pc * 3.0857e18
+                radius_star_rad = radius_star_cm / distance_star_cm
+                radius_stellar_mas = radius_star_rad * 206265 * 1000
+                scale_mas = scale_val * radius_stellar_mas
+                legend_unit = 'R$_\star$'
+                bar_length_axes = scale_mas / (x_max_DOLP - x_min_DOLP)
+                x_bar_axes = 0.90 - bar_length_axes
+                y_bar_axes = 0.04
+                ax_dolp.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax_dolp.transAxes, solid_capstyle='butt')
+                ax_dolp.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=14, ha='center', va='bottom',  transform=ax_dolp.transAxes)
+            # Flèches N-W en haut à droite (identique au panel)
+            arrow_len = 0.04 * (x_max_DOLP - x_min_DOLP)
+            x_arrow = x_max_DOLP - 0.04 * (x_max_DOLP - x_min_DOLP)# vers la gauche
+            y_arrow = y_max_DOLP - 0.12 * (y_max_DOLP - y_min_DOLP)# vers le bas
+            ax_dolp.arrow(x_arrow, y_arrow, 0, arrow_len, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
+            ax_dolp.arrow(x_arrow, y_arrow, -arrow_len, 0, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
+            offset_label = 8
+            ax_dolp.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom')
+            ax_dolp.text(x_arrow - arrow_len - offset_label, y_arrow, 'W', color='white', fontsize=label_size, ha='right', va='center')
+            ax_dolp.set_xlabel('Relative RA (mas)', fontsize=label_size)
+            ax_dolp.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+            ax_dolp.tick_params(axis='both', labelsize=label_size, width=1.2)
+            ax_dolp.locator_params(axis='x', nbins=5)
+            ax_dolp.locator_params(axis='y', nbins=5)
+            ax_dolp.text(0.02, 0.95, f'{star_name2}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='top')
+            ax_dolp.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='bottom')
+            divider_dolp = make_axes_locatable(ax_dolp)
+            cax_dolp = divider_dolp.append_axes('right', size='5%', pad=0.03)
+            cb_dolp = fig_dolp.colorbar(im_dolp, cax=cax_dolp, orientation='vertical')
+            cb_dolp.ax.tick_params(labelsize=label_size)
+            cb_dolp.formatter.set_powerlimits((0, 0))
+            cb_dolp.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.1f}"))
+            cb_dolp.ax.yaxis.get_offset_text().set(size=label_size)
+            plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10)
+            fig_dolp_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_DoLP_only'
+            
+            plt.savefig(os.path.join(outdir, fig_dolp_name + '.png'), dpi=300, bbox_inches='tight')
+            plt.savefig(os.path.join(outdir, fig_dolp_name + '.pdf'), dpi=300, bbox_inches='tight')
+            plt.savefig(os.path.join(outdir_dolp_only, fig_dolp_name + '.png'), dpi=300, bbox_inches='tight')
+            # Sauvegarde conditionnelle dans le dossier spécifique DoLP (une seule image par filtre/étoile, et seulement si clairement résolue)
+            
+            dolp_specific_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/DoLP_specific'
+            os.makedirs(dolp_specific_dir, exist_ok=True)
+            # already_exists = any(str(fltr_arr[z]) in fname and star_name in fname for fname in os.listdir(dolp_specific_dir))
+            # if not already_exists and star_name in clearly_resolved:
+            #     fig_path = os.path.join(dolp_specific_dir, fig_dolp_name + '.png')
+            #     plt.savefig(fig_path, dpi=300, bbox_inches='tight')
+            #     print(f"Figure DoLP-only sauvegardée : {fig_path}", flush=True)
+            # else:
+            #     print(f"DoLP déjà présente pour {star_name} [{fltr_arr[z]}], non sauvegardée.", flush=True)
+            # plt.savefig(os.path.join(outdir_dolp_only, fig_dolp_name + '.pdf'), dpi=300, bbox_inches='tight')
+            
+            if fltr_arr[z] == star_specific_filter.get(star_name, None):
+                # On ne sauvegarde que si aucune image pour ce filtre n'existe déjà
+                already_exists = any(str(fltr_arr[z]) in fname and star_name in fname for fname in os.listdir(dolp_specific_dir))
+                if not already_exists and star_name in clearly_resolved:
+                    #fig_panel_name_unique = f"{star_name}_{mode}_{fltr_arr[z]}_PI_DoLP_panel"
+                    fig_path = os.path.join(dolp_specific_dir, fig_dolp_name + '.pdf')
+                    plt.savefig(fig_path, dpi=300, bbox_inches='tight')
+                    print(f"Figure panel PI+DoLP sauvegardée : {fig_path}", flush=True)
+                else:
+                    print(f"Panel déjà présent pour {star_name} [{fltr_arr[z]}], non sauvegardé.", flush=True)
+                plt.close(fig_panel)
+            else:
+                plt.close(fig_panel)
+                print(f"Panel ignoré pour {star_name} [{fltr_arr[z]}] : filtre non spécifique.", flush=True)
+
+            plt.close(fig_dolp)
+        else:
             plt.close(fig_panel)
-            print(f"    Figure panel PI+DoLP sauvegardée : {os.path.join(outdir2, fig_panel_name + '.png')}", flush=True)
+            print(f"Panel ignoré pour {star_name} [{fltr_arr[z]}] : filtre non spécifique.", flush=True)
+            #plt.close(fig_panel)
+            # print(f"Figure panel PI+DoLP sauvegardée : {os.path.join(outdir_panels, fig_panel_name + '.png')}", flush=True)
 
             # Calcul du profil radial moyen normalisé
             profile = radial_profile(sub_v)
@@ -641,11 +870,11 @@ def log_image(folder_name, star_name, obsmod):
             plt.figure(figsize=(6, 5))
             plt.plot(r_mas, profile_norm, color='#1f77b4', lw=2, label='Radial profile')
             plt.axhline(best_threshold, color='#d62728', ls='--', lw=2, label=f'$h$ (contrast) = {best_threshold:.3f}')
-            plt.xlabel('θ (mas)', fontsize=14)
-            plt.ylabel('PIL/PIL_max', fontsize=14)
-            #plt.title(f'{star_name2} - {fltr_arr[z]}', fontsize=14)
-            plt.tick_params(axis='both', labelsize=14, width=1.2)
-            plt.legend(fontsize=14, loc='upper right')
+            plt.xlabel('θ (mas)', fontsize=label_size)
+            plt.ylabel('PIL/PIL_max', fontsize=label_size)
+            #plt.title(f'{star_name2} - {fltr_arr[z]}', fontsize=label_size)
+            plt.tick_params(axis='both', labelsize=label_size, width=1.2)
+            plt.legend(fontsize=label_size, loc='upper right')
             #plt.grid(alpha=0.3)
             plt.xlim(0, diameter_mas/2)  # Limite l'axe des x au rayon majeur de l'enveloppe
             plt.tight_layout()
@@ -656,234 +885,6 @@ def log_image(folder_name, star_name, obsmod):
             #plt.show()
             plt.close()
 
-            # === AJUSTEMENT ELLIPSE SUR DOLP ===
-            results_dolp = []
-            max_dolp = np.max(sub_v_dolp)
-            lst_threshold_dolp = np.linspace(0, 1, 100)
-            # Récupération de la distance pour l'étoile
-            distance_star = None
-            if 'dist_table' in globals():
-                star_clean = star_name.lower().replace('_', ' ').replace('.', '').strip()
-                match = dist_table[dist_table['Étoile'].str.lower().str.replace('_',' ').str.replace('.','').str.strip() == star_clean]
-                if not match.empty:
-                    distance_star = match.iloc[0]['Distance']
-            for threshold_dolp in lst_threshold_dolp:
-                Ellips_dolp = np.zeros_like(sub_v_dolp)
-                Ellips_dolp[sub_v_dolp > threshold_dolp * max_dolp] = 1
-                regions_dolp = measure.regionprops(measure.label(Ellips_dolp))
-                if not regions_dolp:
-                    continue
-                max_pos_dolp = np.unravel_index(np.argmax(sub_v_dolp), sub_v_dolp.shape)
-                region_max_dolp = None
-                for region in regions_dolp:
-                    if region.coords is not None and any(np.array_equal(max_pos_dolp, coord) for coord in region.coords):
-                        region_max_dolp = region
-                        break
-                if region_max_dolp is None:
-                    region_max_dolp = regions_dolp[0]
-                y_i_dolp, x_i_dolp = region_max_dolp.centroid
-                a_i_dolp = region_max_dolp.major_axis_length / 2.
-                b_i_dolp = region_max_dolp.minor_axis_length / 2.
-                theta_i_dolp = pi / 4
-                def cost_dolp(params):
-                    x0, y0, a, b, theta = params
-                    a = min(a, nSubDim/2 - 2)
-                    b = min(b, nSubDim/2 - 2)
-                    try:
-                        coords = draw.ellipse(y0, x0, a, b, shape=Ellips_dolp.shape, rotation=theta)
-                        template = np.zeros_like(Ellips_dolp)
-                        template[coords] = 1
-                        intersection = np.sum((template == 1) & (Ellips_dolp == 1))
-                        size_sum = np.sum(template) + np.sum(Ellips_dolp)
-                        dice = 2 * intersection / size_sum if size_sum > 0 else 0
-                        return 1 - dice
-                    except Exception as e:
-                        return 1
-                x_f_dolp, y_f_dolp, a_f_dolp, b_f_dolp, theta_f_dolp = opt.fmin(cost_dolp, (x_i_dolp, y_i_dolp, a_i_dolp, b_i_dolp, theta_i_dolp), disp=False)
-                fit_cost_dolp = cost_dolp([x_f_dolp, y_f_dolp, a_f_dolp, b_f_dolp, theta_f_dolp])
-                a_major_dolp = max(a_f_dolp, b_f_dolp)
-                b_minor_dolp = min(a_f_dolp, b_f_dolp)
-                diameter_mas_dolp = 2 * a_major_dolp * pix2mas
-                diameter_minor_mas_dolp = 2 * b_minor_dolp * pix2mas
-                diameter_err_mas_dolp = 2 * pix2mas
-                diameter_minor_err_mas_dolp = 2 * pix2mas
-                ellipticity_dolp = 1 - (b_minor_dolp / a_major_dolp)
-                D_maj_UA_dolp = diameter_mas_dolp * distance_star * 0.001 if distance_star is not None else None
-                results_dolp.append({
-                    'Étoile': star_name,
-                    'Filtre': fltr_arr[z],
-                    'D_maj_mas': diameter_mas_dolp,
-                    'sigma_D_maj_mas': diameter_err_mas_dolp,
-                    'D_min_mas': diameter_minor_mas_dolp,
-                    'sigma_D_min_mas': diameter_minor_err_mas_dolp,
-                    'b_a': b_minor_dolp / a_major_dolp,
-                    'e': ellipticity_dolp,
-                    'X0_mas': (x_f_dolp - nSubDim // 2) * pix2mas,
-                    'Y0_mas': (y_f_dolp - nSubDim // 2) * pix2mas,
-                    'theta_deg': float(np.degrees(theta_f_dolp)),
-                    'Cout': fit_cost_dolp,
-                    'Contraste': threshold_dolp * max_dolp,
-                    'D_maj_UA': D_maj_UA_dolp,
-                    'Distance': distance_star
-                })
-            # Export CSV des ellipses DoLP pour cette image
-
-            # Sélection du meilleur fit DoLP (plus grand diamètre majeur)
-            best_dolp = None
-            if results_dolp:
-                df_dolp = pd.DataFrame(results_dolp)
-                csv_path_dolp = os.path.join(outdir, f'dolp_ellipses_{star_name}_{fltr_arr[z]}_{z}.csv')
-                df_dolp.to_csv(csv_path_dolp, index=False)
-                print(f"Ellipses DoLP sauvegardées dans : {csv_path_dolp}")
-                idx_best = df_dolp['Cout'].idxmin()
-                best_dolp = df_dolp.loc[idx_best].to_dict()
-
-            # === PANEL VISUALISATION DOLP+FIT (gauche) / PI (droite) ===
-            # Ce bloc doit être à la même indentation que les autres visualisations
-            if best_dolp is not None:
-                # Calcul du contour ellipse DoLP dans le même repère que PI
-                t_dolp = np.linspace(0, 2 * pi, nSubDim)
-                x0_dolp_pix = best_dolp['X0_mas'] / pix2mas + nSubDim // 2
-                y0_dolp_pix = best_dolp['Y0_mas'] / pix2mas + nSubDim // 2
-                a_dolp_pix = best_dolp['D_maj_mas'] / 2 / pix2mas
-                b_dolp_pix = best_dolp['D_min_mas'] / 2 / pix2mas
-                theta_dolp = np.pi / 2 - np.radians(best_dolp['theta_deg'])
-                Ell_dolp = np.array([
-                    a_dolp_pix * np.cos(t_dolp),
-                    b_dolp_pix * np.sin(t_dolp)
-                ])
-                M_rot_dolp = np.array([[cos(theta_dolp), -sin(theta_dolp)], [sin(theta_dolp), cos(theta_dolp)]])
-                Ell_rot_dolp = np.dot(M_rot_dolp, Ell_dolp)
-                Ell_rot_dolp[0, :] += x0_dolp_pix
-                Ell_rot_dolp[1, :] += y0_dolp_pix
-                x_contour_dolp_mas = (Ell_rot_dolp[0, :] - nSubDim // 2) * pix2mas
-                y_contour_dolp_mas = (Ell_rot_dolp[1, :] - nSubDim // 2) * pix2mas
-                x_centroid_dolp_mas = best_dolp['X0_mas']
-                y_centroid_dolp_mas = best_dolp['Y0_mas']
-                outdir_panel = os.path.join(outdir, 'panels_dolp_fit')
-                os.makedirs(outdir_panel, exist_ok=True)
-                fig_panel, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-                
-                # DoLP à gauche, même extent et centrage que PI
-                # Calcul de l'extent propre à la sous-image DoLP
-                # Utilise le même extent que PI car la découpe est synchronisée
-                # Affichage DoLP avec son propre extent
-                nSubDim_dolp = sub_v_dolp.shape[0]
-                x_min_dolp = -pix2mas * nSubDim_dolp // 2
-                x_max_dolp = pix2mas * (nSubDim_dolp // 2 - 1)
-                y_min_dolp = -pix2mas * nSubDim_dolp // 2
-                y_max_dolp = pix2mas * (nSubDim_dolp // 2 - 1)
-                im1 = ax1.imshow(sub_v_dolp, cmap='plasma', origin='lower', vmin=np.nanmin(sub_v_dolp), vmax=np.nanmax(sub_v_dolp), extent=[x_min_dolp, x_max_dolp, y_min_dolp, y_max_dolp])
-                # Calcul du contour dans le repère DoLP
-                t_dolp = np.linspace(0, 2 * np.pi, nSubDim_dolp)
-                a_dolp_pix = best_dolp['D_maj_mas'] / 2 / pix2mas
-                b_dolp_pix = best_dolp['D_min_mas'] / 2 / pix2mas
-                x0_dolp_pix = best_dolp['X0_mas'] / pix2mas + nSubDim_dolp // 2
-                y0_dolp_pix = best_dolp['Y0_mas'] / pix2mas + nSubDim_dolp // 2
-                theta_dolp = np.pi / 2 - np.radians(best_dolp['theta_deg'])
-                Ell_dolp = np.array([
-                    a_dolp_pix * np.cos(t_dolp),
-                    b_dolp_pix * np.sin(t_dolp)
-                ])
-                M_rot_dolp = np.array([[np.cos(theta_dolp), -np.sin(theta_dolp)], [np.sin(theta_dolp), np.cos(theta_dolp)]])
-                Ell_rot_dolp = np.dot(M_rot_dolp, Ell_dolp)
-                Ell_rot_dolp[0, :] += x0_dolp_pix
-                Ell_rot_dolp[1, :] += y0_dolp_pix
-                # Conversion en mas dans le repère DoLP
-                x_contour_dolp_mas = (Ell_rot_dolp[0, :] - nSubDim_dolp // 2)
-                y_contour_dolp_mas = (Ell_rot_dolp[1, :] - nSubDim_dolp // 2)
-                ax1.plot(x_contour_dolp_mas, y_contour_dolp_mas, color='lime', linewidth=2, linestyle='--')
-                ax1.scatter([best_dolp['X0_mas']], [best_dolp['Y0_mas']], color='red', marker='x')
-                ax1.set_title('DoLP + ellipse', fontsize=14)
-                ax1.set_xlabel('Relative RA (mas)', fontsize=14)
-                ax1.set_ylabel('Relative Dec (mas)', fontsize=14)
-                ax1.tick_params(axis='both', labelsize=14, width=1.2)
-                # for label in ax2.get_xticklabels() + ax2.get_yticklabels():
-                #     label.set_fontweight('bold')
-                ax1.locator_params(axis='x', nbins=5)
-                ax1.locator_params(axis='y', nbins=5)
-                divider1 = make_axes_locatable(ax1)
-                cax1 = divider1.append_axes('right', size='5%', pad=0.03)
-                cb1 = fig_panel.colorbar(im1, cax=cax1, orientation='vertical')
-                cb1.ax.tick_params(labelsize=14)
-                #cmapProp = {'drawedges': True}            
-                cb1.formatter.set_powerlimits((0, 0))
-                cb1.ax.yaxis.get_offset_text().set(size=14)
-            
-                
-                
-                ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=14, color='white', va='top')
-                ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=14, color='white', va='bottom')
-                # PI à droite, mêmes paramètres
-                im2 = ax2.imshow(
-                    np.log10(sub_v + np.abs(np.min(sub_v)) + 10),
-                    cmap='inferno',
-                    origin='lower',
-                    extent=[x_min+1, x_max, y_min+1, y_max]
-                )
-                ax2.set_title('PI', fontsize=14)
-                ax2.set_xlabel('Relative RA (mas)', fontsize=14)
-                ax2.tick_params(axis='both', labelsize=14, width=1.2)
-                # for label in ax2.get_xticklabels() + ax2.get_yticklabels():
-                #     label.set_fontweight('bold')
-                ax2.locator_params(axis='x', nbins=5)
-                ax2.locator_params(axis='y', nbins=5)
-                ax2.axes.yaxis.set_ticklabels([])  # Pas de labels y sur la 2e image
-                #ax2.set_ylabel('Relative Dec (mas)', fontsize=14)
-
-                divider2 = make_axes_locatable(ax2)
-                cax2 = divider2.append_axes('right', size='5%', pad=0.03)
-                cb2 = fig_panel.colorbar(im2, cax=cax2, orientation='vertical')
-                cb2.ax.tick_params(labelsize=14)
-                ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=14, color='white', va='top')
-                ax2.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax2.transAxes, fontsize=14, color='white', va='bottom')
-                plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10, wspace=0.15)
-                fig_panel_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_DOLPfit_PI_panel'
-                plt.savefig(os.path.join(outdir_panel, fig_panel_name + '.png'), dpi=300, bbox_inches='tight')
-                plt.savefig(os.path.join(outdir_panel, fig_panel_name + '.pdf'), dpi=300, bbox_inches='tight')
-                plt.close(fig_panel)
-                print(f"    Panel DOLP+fit/PI sauvegardé : {os.path.join(outdir_panel, fig_panel_name + '.png')}", flush=True)
-                # Ajout dans le dictionnaire principal avec DoLP
-                results.append({
-                    'Étoile': star_name,
-                    'Filtre': fltr_arr[z],
-                    'D_maj_mas': diameter_mas,
-                    'sigma_D_maj_mas': diameter_err_mas,
-                    'D_maj_UA': diameter_mas * distance_star * 0.001 if distance_star is not None else None,
-                    'sigma_D_maj_UA': diameter_err_mas * distance_star * 0.001 if distance_star is not None else None,
-                    'D_maj_UA_dolp': best_dolp['D_maj_UA'],
-                    'sigma_D_maj_UA_dolp': best_dolp['sigma_D_maj_mas'] * best_dolp['Distance'] * 0.001 if best_dolp['Distance'] is not None else None,
-                    'D_min_mas': diameter_minor_mas,
-                    'sigma_D_min_mas': diameter_minor_err_mas,
-                    'b_a': b_minor / a_major,
-                    'e': ellipticity,
-                    'X0_mas': x_centroid_mas,
-                    'Y0_mas': y_centroid_mas,
-                    'theta_deg': np.degrees(theta_f),
-                    'Cout': best_cost,
-                    'Contraste': best_threshold
-                })
-            else:
-                # Si pas de fit DoLP, on met None pour les colonnes DoLP
-                results.append({
-                    'Étoile': star_name,
-                    'Filtre': fltr_arr[z],
-                    'D_maj_mas': diameter_mas,
-                    'sigma_D_maj_mas': diameter_err_mas,
-                    'D_maj_UA': diameter_mas * distance_star * 0.001 if distance_star is not None else None,
-                    'sigma_D_maj_UA': diameter_err_mas * distance_star * 0.001 if distance_star is not None else None,
-                    'D_maj_UA_dolp': None,
-                    'sigma_D_maj_UA_dolp': None,
-                    'D_min_mas': diameter_minor_mas,
-                    'sigma_D_min_mas': diameter_minor_err_mas,
-                    'b_a': b_minor / a_major,
-                    'e': ellipticity,
-                    'X0_mas': x_centroid_mas,
-                    'Y0_mas': y_centroid_mas,
-                    'theta_deg': np.degrees(theta_f),
-                    'Cout': best_cost,
-                    'Contraste': best_threshold
-                })
 
     # Sauvegarde du DataFrame individuel
     if results:
@@ -897,13 +898,15 @@ def log_image(folder_name, star_name, obsmod):
         generate_morphology_latex_table(df, latex_path)
     
     # Retourne les résultats pour compilation globale
+    elapsed_time = time.time() - start_time
+    print(f"⏱️ Durée d'exécution log_image : {elapsed_time:.2f} secondes")
     return results
 
 # Exemple d'appel de la fonction
 # log_image('First','V854_Cen', 'alone')
 # log_image('First','V854_Cen', 'both')
 
-large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log_+/'
+
 
 # Liste globale pour compiler tous les résultats
 all_results = []
@@ -919,6 +922,7 @@ else:
     print(f"📁 Dossiers trouvés : {found_dirs}")
     print(f"🔍 Étoiles dans star_filters : {list(star_filters.keys())}")
 
+# L'appel à la fonction principale pour chaque étoile dans le répertoire
 for star_name in os.listdir(large_log_dir):
     star_path = os.path.join(large_log_dir, star_name)
     if not os.path.isdir(star_path):
@@ -926,7 +930,7 @@ for star_name in os.listdir(large_log_dir):
     if star_name in star_filters:
         mode, filters = star_filters[star_name]
         print(f"🌟 Traitement de {star_name} | Mode : {mode} | Filtres : {filters}")
-        star_results = log_image('large_log_+', star_name, mode)
+        star_results = log_image('large_log_+', star_name, mode, star_specific_filter=star_specific_filter)
         if star_results:
             print(f"   ✅ {len(star_results)} résultats obtenus pour {star_name}")
             all_results.extend(star_results)  # Ajoute les résultats de cette étoile à la liste globale
@@ -1142,6 +1146,18 @@ plt.close()
 print("✅ Histogramme des tailles physiques sauvegardé sous 'histogramme_taille_physique_max_diam.png' et '.pdf'")
 
 # Sauvegarde de la table filtrée en CSV
+if 'affected_stars_dolp' in globals() and len(affected_stars_dolp) > 0:
+    # Liste unique des étoiles concernées
+    etoiles_uniques = sorted(set([star['Étoile'] for star in affected_stars_dolp]))
+    print('\nListe unique des Étoiles avec cercles fixes DoLP (distance < 150 pc ou rayon > 500 R☉):')
+    for etoile in etoiles_uniques:
+        print(f"  - {etoile}")
+    # Sauvegarde dans le dossier spécifique All_tables/morpho
+    all_tables_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_tables/morpho'
+    os.makedirs(all_tables_dir, exist_ok=True)
+    with open(os.path.join(all_tables_dir, 'affected_stars_dolp_unique.txt'), 'w') as f:
+        for etoile in etoiles_uniques:
+            f.write(f"{etoile}\n")
 # Colonnes à conserver
 cols_to_keep = [
     'Étoile', 'Filtre', 'D_maj_mas', 'sigma_D_maj_mas', 'D_min_mas', 'sigma_D_min_mas',
@@ -1156,101 +1172,7 @@ df_csv = pd.read_csv(os.path.join(all_tables_dir, 'filtered_results_max_diam.csv
 generate_morphology_latex_table(df_csv, filtered_latex_path)
 print(f"✅ Table CSV et LaTeX filtrée sauvegardée sous '{os.path.join(all_tables_dir, 'filtered_results_max_diam.csv')}' et '{filtered_latex_path}'")
 
-# # === PANEL VISUALISATION DOLP+FIT (gauche) / PI (droite) ===
-#         # Sélection du meilleur fit DoLP (plus grand diamètre majeur)
-#         best_dolp = None
-#         if results_dolp:
-#             df_dolp = pd.DataFrame(results_dolp)
-#             idx_best = df_dolp['D_maj_mas'].idxmax()
-#             best_dolp = df_dolp.loc[idx_best].to_dict()
-#         # Panel DOLP+fit/PI si best_dolp existe
-#         if best_dolp is not None:
-#             t_dolp = np.linspace(0, 2 * pi, nSubDim)
-#             Ell_dolp = np.array([
-#                 best_dolp['D_maj_mas']/2/pix2mas * np.cos(t_dolp),
-#                 best_dolp['D_min_mas']/2/pix2mas * np.sin(t_dolp)
-#             ])
-#             theta_dolp = np.pi / 2 - np.radians(best_dolp['theta_deg'])
-#             M_rot_dolp = np.array([[cos(theta_dolp), -sin(theta_dolp)], [sin(theta_dolp), cos(theta_dolp)]])
-#             Ell_rot_dolp = np.dot(M_rot_dolp, Ell_dolp)
-#             Ell_rot_dolp[0, :] += best_dolp['X0_mas']/pix2mas + nSubDim//2
-#             Ell_rot_dolp[1, :] += best_dolp['Y0_mas']/pix2mas + nSubDim//2
-#             x_contour_dolp_mas = (Ell_rot_dolp[0, :] - nSubDim // 2) * pix2mas
-#             y_contour_dolp_mas = (Ell_rot_dolp[1, :] - nSubDim // 2) * pix2mas
-#             x_centroid_dolp_mas = best_dolp['X0_mas']
-#             y_centroid_dolp_mas = best_dolp['Y0_mas']
-#             outdir_panel = os.path.join(outdir, 'panels_dolp_fit')
-#             os.makedirs(outdir_panel, exist_ok=True)
-#             fig_panel, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-#             im1 = ax1.imshow(sub_v_dolp, cmap='plasma', origin='lower', vmin=np.nanmin(sub_v_dolp), vmax=np.nanmax(sub_v_dolp), extent=[x_min, x_max, y_min, y_max])
-#             ax1.plot(x_contour_dolp_mas, y_contour_dolp_mas, color='lime', linewidth=2, linestyle='--')
-#             ax1.scatter([x_centroid_dolp_mas], [y_centroid_dolp_mas], color='red', marker='x')
-#             ax1.set_title('DoLP + ellipse', fontsize=14)
-#             ax1.set_xlabel('Relative RA (mas)', fontsize=14)
-#             ax1.set_ylabel('Relative Dec (mas)', fontsize=14)
-#             divider1 = make_axes_locatable(ax1)
-#             cax1 = divider1.append_axes('right', size='5%', pad=0.03)
-#             cb1 = fig_panel.colorbar(im1, cax=cax1, orientation='vertical')
-#             cb1.ax.tick_params(labelsize=14)
-#             ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=14, color='white', va='top')
-#             ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=14, color='white', va='bottom')
-#             im2 = ax2.imshow(sub_v, cmap='inferno', origin='lower', vmin=np.nanmin(sub_v), vmax=np.nanmax(sub_v), extent=[x_min, x_max, y_min, y_max])
-#             ax2.set_title('PI', fontsize=14)
-#             ax2.set_xlabel('Relative RA (mas)', fontsize=14)
-#             ax2.set_ylabel('Relative Dec (mas)', fontsize=14)
-#             divider2 = make_axes_locatable(ax2)
-#             cax2 = divider2.append_axes('right', size='5%', pad=0.03)
-#             cb2 = fig_panel.colorbar(im2, cax=cax2, orientation='vertical')
-#             cb2.ax.tick_params(labelsize=14)
-#             ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=14, color='white', va='top')
-#             ax2.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax2.transAxes, fontsize=14, color='white', va='bottom')
-#             plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10, wspace=0.15)
-#             fig_panel_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_DOLPfit_PI_panel'
-#             plt.savefig(os.path.join(outdir_panel, fig_panel_name + '.png'), dpi=300, bbox_inches='tight')
-#             plt.savefig(os.path.join(outdir_panel, fig_panel_name + '.pdf'), dpi=300, bbox_inches='tight')
-#             plt.close(fig_panel)
-#             print(f"    Panel DOLP+fit/PI sauvegardé : {os.path.join(outdir_panel, fig_panel_name + '.png')}", flush=True)
-#             # Ajout dans le dictionnaire principal avec DoLP
-#             results.append({
-#                 'Étoile': star_name,
-#                 'Filtre': fltr_arr[z],
-#                 'D_maj_mas': diameter_mas,
-#                 'sigma_D_maj_mas': diameter_err_mas,
-#                 'D_maj_UA': diameter_mas * distance_star * 0.001 if distance_star is not None else None,
-#                 'sigma_D_maj_UA': diameter_err_mas * distance_star * 0.001 if distance_star is not None else None,
-#                 'D_maj_UA_dolp': best_dolp['D_maj_UA'],
-#                 'sigma_D_maj_UA_dolp': best_dolp['sigma_D_maj_mas'] * best_dolp['Distance'] * 0.001 if best_dolp['Distance'] is not None else None,
-#                 'D_min_mas': diameter_minor_mas,
-#                 'sigma_D_min_mas': diameter_minor_err_mas,
-#                 'b_a': b_minor / a_major,
-#                 'e': ellipticity,
-#                 'X0_mas': x_centroid_mas,
-#                 'Y0_mas': y_centroid_mas,
-#                 'theta_deg': np.degrees(theta_f),
-#                 'Cout': best_cost,
-#                 'Contraste': best_threshold
-#             })
-#         else:
-#             # Si pas de fit DoLP, on met None pour les colonnes DoLP
-#             results.append({
-#                 'Étoile': star_name,
-#                 'Filtre': fltr_arr[z],
-#                 'D_maj_mas': diameter_mas,
-#                 'sigma_D_maj_mas': diameter_err_mas,
-#                 'D_maj_UA': diameter_mas * distance_star * 0.001 if distance_star is not None else None,
-#                 'sigma_D_maj_UA': diameter_err_mas * distance_star * 0.001 if distance_star is not None else None,
-#                 'D_maj_UA_dolp': None,
-#                 'sigma_D_maj_UA_dolp': None,
-#                 'D_min_mas': diameter_minor_mas,
-#                 'sigma_D_min_mas': diameter_minor_err_mas,
-#                 'b_a': b_minor / a_major,
-#                 'e': ellipticity,
-#                 'X0_mas': x_centroid_mas,
-#                 'Y0_mas': y_centroid_mas,
-#                 'theta_deg': np.degrees(theta_f),
-#                 'Cout': best_cost,
-#                 'Contraste': best_threshold
-#             })
+
 # === ADAPTATION EXPORT LATEX ===
 # Adapter la fonction generate_morphology_latex_table pour inclure les colonnes D_maj_UA, sigma_D_maj_UA, D_maj_UA_dolp, sigma_D_maj_UA_dolp
 
@@ -1310,4 +1232,52 @@ def generate_morphology_latex_table(df, latex_path):
     with open(latex_path, 'w') as f:
         f.write(latex_table)
 
-
+# === ASSEMBLAGE DES GRANDS PANELS PAGINÉS ===
+def assemble_grand_panels_paginated(panel_dir, output_path_base, ncols=2, nrows=7):
+    """
+    Crée plusieurs grands panels paginés, chaque panel contenant au maximum ncols*nrows images.
+    - panel_dir: dossier où sont stockés les panels individuels (DoLP+contours & PI)
+    - output_path_base: base du chemin de sortie (sans extension ni numéro de page)
+    - ncols: nombre de colonnes
+    - nrows: nombre de lignes
+    """
+    import matplotlib.image as mpimg
+    import matplotlib.pyplot as plt
+    import os
+    image_files = [f for f in os.listdir(panel_dir) if f.endswith('PI_DoLP_panel.png')]
+    n_panels_per_page = ncols * nrows
+    total = len(image_files)
+    page = 0
+    for start in range(0, total, n_panels_per_page):
+        page += 1
+        end = min(start + n_panels_per_page, total)
+        fig, axes = plt.subplots(nrows, ncols, figsize=(12*ncols, 5*nrows))
+        if nrows == 1:
+            axes = np.array([axes])
+        axes = axes.reshape(nrows, ncols)
+        for idx, fname in enumerate(image_files[start:end]):
+            row = idx // ncols
+            col = idx % ncols
+            img_path = os.path.join(panel_dir, fname)
+            img = mpimg.imread(img_path)
+            axes[row, col].imshow(img)
+            axes[row, col].axis('off')
+            #axes[row, col].set_title(fname.replace('_PI_DoLP_panel.png',''), fontsize=18)
+        # Désactive les axes vides
+        for idx in range(end-start, n_panels_per_page):
+            row = idx // ncols
+            col = idx % ncols
+            axes[row, col].axis('off')
+        panel_name = 'PI_panel'
+        # Ajuste les espacements pour un remplissage optimal
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0.10, hspace=0.01)
+        plt.savefig(f"{output_path_base}png/{panel_name}_page_{page}.png", dpi=300, bbox_inches='tight')
+        plt.savefig(f"{output_path_base}pdf/{panel_name}_page_{page}.pdf", dpi=300, bbox_inches='tight')
+        plt.close(fig)
+        print(f"✅ Grand panel page {page} sauvegardé sous {output_path_base}png/{panel_name}_page_{page}.png et {output_path_base}pdf/{panel_name}_page_{page}.pdf")
+        # Appel de la fonction pour assembler les panels paginés
+panels_directory = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Panels/specific/'
+output_base = '/home/nbadolo/Bureau/Aymard/Donnees_sph/All_plots/Morphologies_contours/Panels/grand_panel/'
+os.makedirs(output_base + 'png', exist_ok=True)
+os.makedirs(output_base + 'pdf', exist_ok=True)
+#assemble_grand_panels_paginated(panels_directory, output_base, ncols=2, nrows=7)

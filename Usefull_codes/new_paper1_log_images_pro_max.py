@@ -79,6 +79,7 @@ star_filters = {
     'CW_Cnc': ('alone', ['I_PRIM']),
     'Mira':  ('both',  ['CntHa_B_Ha']),
     'Pi.01_Gru':('both',  ['V_N_R']),
+    'V854_Cen': ('alone',  ['V']),
    
 }
 
@@ -87,7 +88,7 @@ star_filters = {
 #star_name = 'SW_Col'
 #obsmod = 'both'
 
-folname = 'large_log_+'
+folname = 'First'
 txt_folder = 'sphere_files'
 file_path = '/home/nbadolo/Bureau/Aymard/Donnees_sph/' + txt_folder + '/'
 file_name = 'no_psf_star_lst.txt'
@@ -336,11 +337,15 @@ def log_image(star_name, obsmod):
                             f'{no_psf_dir}' + star_name + '_' + f'{obsmod}_{fltr_arr[z]}_{z}' + '_lin' + '.pdf',
                             dpi=300, bbox_inches='tight', pad_inches=0.01
                         )
-                        # plt.savefig(
-                        #     f'/home/nbadolo/Bureau/Aymard/Donnees_sph/{folname}/' + star_name +
-                        #     '/plots/no_psf/I/' + star_name + '_' + f'{obsmod}_{fltr_arr[z]}_{z}' + '_lin' + '.eps',
-                        #     format='eps', dpi=300, bbox_inches='tight', pad_inches=0.01
-                        # )
+                        if star_name=='V854_Cen':
+                            plt.savefig(
+                                f'{no_psf_dir}' + star_name + '_' + f'{obsmod}_{fltr_arr[z]}_{z}' + '_lin' + '.eps',
+                                format='eps', dpi=300, bbox_inches='tight', pad_inches=0.01
+                            )
+                        plt.savefig(
+                            f'{save_dir}' + star_name + '_' + f'{obsmod}_{fltr_arr[z]}_{z}' + '_lin' + '.eps',
+                            format='eps', dpi=300, bbox_inches='tight', pad_inches=0.01
+                        )
                         # plt.show()
                         # plt.close(fig)
     else : # l'étoile a une psf
@@ -586,9 +591,10 @@ def log_image(star_name, obsmod):
 # star=log_image('V1943_Sgr', 'both')  
 
 # # Utilisation :
-for star, (mode, filters) in star_filters.items():
-    print(f"Étoile : {star} | Mode : {mode} | Filtres : {filters}")
-    log_image(star, mode)
+# for star, (mode, filters) in star_filters.items():
+#     print(f"Étoile : {star} | Mode : {mode} | Filtres : {filters}")
+#     log_image(star, mode)
+log_image('V854_Cen', 'alone')
 stars_with_psf = []
 stars_without_psf = []
 
