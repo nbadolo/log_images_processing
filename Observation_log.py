@@ -35,13 +35,13 @@ log_file = os.path.join(dossier_logs, f'log_observations_{timestamp}.csv')
 # La clé est le nom qui sera utilisé dans le CSV,
 # la valeur est la clé exacte du header FITS à chercher
 keywords = {
-    'Date': 'DATE-OBS',                               # Date et heure d’observation
-    'Object': 'OBJECT',                               # Nom de l’objet observé
+    'Date': 'DATE-OBS',                              # Date et heure d’observation
+    'Object': 'OBJECT',                              # Nom de l’objet observé
     'ND': 'HIERARCH ESO INS3 OPTI2 NAME',            # Nom du filtre ND
     'Filter 1': 'HIERARCH ESO INS3 OPTI5 NAME',      # Nom du premier filtre
     'Filter 2': 'HIERARCH ESO INS3 OPTI6 NAME',      # Nom du deuxième filtre
     'Seeing': 'HIERARCH ESO OBS AMBI FWHM',          # Valeur du seeing ambiant (FWHM)
-    'Airmass': 'HIERARCH ESO OBS AIRM',               # Masse d’air à l’observation
+    'Airmass': 'HIERARCH ESO OBS AIRM',              # Masse d’air à l’observation
 }
 
 # ======= INITIALISATION DES COMPTEURS =======

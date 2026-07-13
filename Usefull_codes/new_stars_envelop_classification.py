@@ -102,7 +102,7 @@ r_mas = mas_per_pixel * r  # Conversion des distances radiales en millièmes d'a
 
 # Dossier principal contenant les étoiles
 #log = 'spherical'
-log='BKvir_RTvir_Whya'
+log='large_log_+'
 main_folder = '/home/nbadolo/Bureau/Aymard/Donnees_sph/' + log + '/'
 fname1 = 'zpl_p23_make_polar_maps-ZPL_SCIENCE_P23_REDUCED'
 fname2 = '-zpl_science_p23_REDUCED'
@@ -494,8 +494,11 @@ if len(psf_dice_data) > 0:
     
     plt.tight_layout()
     boxplot_output_path = os.path.join(classification_dir, 'fwhm_boxplot_by_filter.png')
+    boxplot_output_path_pdf = os.path.join(classification_dir, 'fwhm_boxplot_by_filter.pdf')
     plt.savefig(boxplot_output_path, dpi=150, bbox_inches='tight')
+    plt.savefig(boxplot_output_path_pdf, dpi=300, bbox_inches='tight')
     summary_paths['boxplot_png'] = boxplot_output_path
+    summary_paths['boxplot_pdf'] = boxplot_output_path_pdf
     plt.close()
     
     # Figure 3 : Comparaison inter-filtres (scatter plot)

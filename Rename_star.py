@@ -27,14 +27,14 @@ from astropy.io import fits
 "both == Cnt820_Cnt748  CntHa_B_Ha  CntHa_N_Ha  I_PRIM_R_PRIM  V_Cnt748  V_N_R"
 
 # Chemin vers le dossier de l'étoile
-star_name = "Pi.01_Gru"
-mod = "both"
-filt ="Cnt820_Cnt748"
+star_name = "U_Her"
+mod = "alone"
+filt ="VBB"
 chemin_dossier = "/home/nbadolo/Bureau/Aymard/Donnees_sph/clearly_resolved/"+star_name + "/"+ "star"+"/"+mod+"/"+ filt
 #chemin_dossier = "/home/nbadolo/Bureau/Aymard/Donnees_sph/First/"+star_name + "/"+ "star"+"/"+mod+"/"+ filt
 
 # Nouveau nom à mettre dans l'en-tête
-nouveau_nom = "Pi1 Gru"
+nouveau_nom = "U Her"
 
 # Mot-clé de l'en-tête à modifier
 cle_nom_etoile = "OBJECT"  # Change si nécessaire

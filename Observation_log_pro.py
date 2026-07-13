@@ -69,6 +69,151 @@ keywords = {
 #     'Airmass'                : 'HIERARCH ESO OBS AIRM',
 # }
 
+# === Fonction de normalisation des noms d'étoiles ===
+def normalize_star_name(name):
+    """
+    Normalise un nom d'étoile pour faciliter la correspondance :
+    - Supprime les espaces
+    - Remplace les tirets par rien
+    - Met en majuscules
+    - Remplace 'l' par 'I' dans certains cas (COl -> COI)
+    """
+    if not isinstance(name, str):
+        return str(name)
+    normalized = name.upper().replace(' ', '').replace('-', '').replace('_', '')
+    # Correction spécifique pour SW COl -> SW COI
+    normalized = normalized.replace('SWCOL', 'SWCOI')
+    return normalized
+
+# === Dictionnaire de correction des noms mal orthographiés ===
+# Mappe les noms normalisés vers les bons noms
+name_corrections = {
+    'SWCOL': 'SW Col',
+    'SWCOI': 'SW Col',
+    'ALPHAHER': 'Alpha Her',
+    'CHICYG': 'Chi Cyg',
+    'ZERI': 'Z Eri',
+    'RPEG': 'R Peg',
+    'BWOCT': 'BW Oct',
+    'ACCET': 'AC Cet',
+    'DZAQR': 'DZ Aqr',
+    'ZPEG': 'Z Peg',
+    'WPEG': 'W Peg',
+    'RTVIR': 'RT Vir',
+    'RXLEP': 'RX Lep',
+    'BETAGRU': 'Beta Gru',
+    'TMIC': 'T Mic',
+    'RDOR': 'R Dor',
+    'AKHYA': 'AK Hya',
+    'RLEO': 'R Leo',
+    'BKVIR': 'BK Vir',
+    'TCET': 'T Cet',
+    'MIRACETI': 'Mira Ceti',
+    'UDEL': 'U Del',
+    'UHER': 'U Her',
+    'PI1GRU': r'$\pi^1$ Gru',
+    'Π1GRU': r'$\pi^1$ Gru',
+    'WAQL': 'W Aql',
+    'VPSA': 'V PsA',
+    'RHYA': 'R Hya',
+    'RAQL': 'R Aql',
+    'SPAV': 'S Pav',
+    'GYAQL': 'GY Aql',
+    'SVAQR': 'SV Aqr',
+    'UPSCET': 'Ups Cet',
+    'V1943SGR': 'V1943 Sgr',
+    'VV1943SGR': 'V1943 Sgr',  # VV1943 Sgr -> V1943 Sgr
+    'PSIPHE': 'Psi Phe',
+    'VSLEP': 'V S Lep',
+    'SSLEP': 'SS Lep',
+    '17LEP': 'SS Lep',  # 17 Lep est en fait SS Lep
+    'L2PUP': 'L_2 Pup',
+    'L02PUP': 'L_2 Pup',  # L02 Pup -> L2 Pup
+    'CWCNC': 'CW Cnc',
+    'VCWCNC': 'CW Cnc',  # VCW Cnc -> CW Cnc
+    'YPAV': 'Y Pav',
+    'RHOR': 'R Hor',
+    'RSCL': 'R Scl',
+    'YSCL': 'Y Scl',
+    'RCRT': 'R Crt',
+    'WHYA': 'W Hya',
+    'SWVIR': 'SW Vir',
+    'VHYA': 'V Hya',
+    'ups Cet': 'Ups Cet',
+}
+
+def correct_star_name(name):
+    """
+    Corrige les noms d'étoiles mal orthographiés en utilisant le dictionnaire
+    """
+    if not isinstance(name, str):
+        return str(name)
+    
+    normalized = normalize_star_name(name)
+    
+    # Si on trouve une correction, on l'utilise
+    if normalized in name_corrections:
+        return name_corrections[normalized]
+    
+    # Sinon on retourne le nom original
+    return name.strip()
+
+# === Dictionnaire PSF pour chaque observation ===
+# Format: (Date, Time, Target normalisé) -> "Yes" ou "No"
+psf_dict_raw = {
+    ('2015-09-22', '06:00:05', 'Y Pav'): 'No',
+    ('2015-09-23', '06:33:06', 'R Hor'): 'Yes',
+    ('2015-09-23', '05:22:59', 'R Scl'): 'Yes',
+    ('2015-09-23', '04:32:28', 'Y Scl'): 'Yes',
+    ('2015-12-19', '06:56:44', 'R Crt'): 'Yes',
+    ('2016-02-19', '02:00:31', 'SW Col'): 'No',
+    ('2016-03-08', '07:53:40', 'W Hya'): 'No',
+    ('2016-03-09', '07:35:37', 'SW Vir'): 'No',
+    ('2016-04-22', '01:37:40', 'V Hya'): 'Yes',
+    ('2016-04-30', '06:08:35', 'Alpha Her'): 'Yes',
+    ('2016-06-30', '05:27:44', 'Chi Cyg'): 'Yes',
+    ('2016-07-22', '10:13:16', 'Z Eri'): 'No',
+    ('2016-07-22', '07:33:48', 'R Peg'): 'Yes',
+    ('2016-07-22', '06:48:41', 'BW Oct'): 'Yes',
+    ('2016-07-22', '09:09:48', 'AC Cet'): 'Yes',
+    ('2016-07-22', '07:12:00', 'DZ Aqr'): 'Yes',
+    ('2016-07-22', '08:40:12', 'Z Peg'): 'Yes',
+    ('2016-07-22', '08:13:34', 'W Peg'): 'Yes',
+    ('2016-07-29', '23:20:37', 'RT Vir'): 'No',
+    ('2016-10-04', '06:33:30', 'RX Lep'): 'Yes',
+    ('2016-10-12', '02:07:05', 'Beta Gru'): 'Yes',
+    ('2016-10-12', '01:05:09', 'T Mic'): 'Yes',
+    ('2016-11-09', '04:13:02', 'R Dor'): 'No',
+    ('2016-12-07', '06:06:15', 'AK Hya'): 'No',
+    ('2016-12-14', '08:47:36', 'R Leo'): 'No',
+    ('2017-03-07', '04:08:12', 'BK Vir'): 'No',
+    ('2017-07-31', '07:44:43', 'T Cet'): 'No',
+    ('2017-11-27', '03:03:26', 'Mira Ceti'): 'Yes',
+    ('2019-07-05', '05:09:14', 'U Del'): 'No',
+    ('2019-07-08', '01:55:17', 'U Her'): 'No',
+    ('2019-07-08', '09:20:26', 'π¹ Gru'): 'No',
+    ('2019-07-09', '04:53:58', 'W Aql'): 'No',
+    ('2019-07-09', '08:51:53', 'V PsA'): 'No',
+    ('2019-07-27', '01:35:53', 'R Hya'): 'No',
+    ('2019-07-30', '00:53:26', 'R Aql'): 'Yes',
+    ('2019-09-24', '03:38:22', 'S Pav'): 'No',
+    ('2019-09-28', '03:18:41', 'GY Aql'): 'Yes',
+    ('2019-09-29', '03:02:18', 'SV Aqr'): 'Yes',
+    ('2019-10-16', '03:26:11', 'ups Cet'): 'Yes',
+    ('2019-10-16', '01:42:05', 'V1943 Sgr'): 'Yes',
+    ('2019-10-16', '02:46:51', 'Psi Phe'): 'Yes',
+    ('2020-02-29', '01:51:51', 'V S Lep'): 'No',
+    ('2020-02-29', '00:10:45', 'SS Lep'): 'Yes',
+    ('2020-02-29', '00:48:30', 'L₂ Pup'): 'No',
+    ('2020-02-29', '02:20:39', 'CW Cnc'): 'No',
+}
+
+# Créer un dictionnaire avec des clés normalisées
+psf_dict = {}
+for (date, time, target), value in psf_dict_raw.items():
+    normalized_target = normalize_star_name(target)
+    psf_dict[(date, time, normalized_target)] = value
+
 # === Initialisation ===
 donnees = []
 nb_total = nb_ok = nb_erreurs = nb_sans_fits = 0
@@ -137,6 +282,9 @@ for dossier in os.listdir(racine):
                         if isinstance(nom_objet, bytes):
                             nom_objet = nom_objet.decode(errors='ignore')
                         nom_objet = nom_objet.strip()
+                        
+                        # Corriger le nom de l'objet si mal orthographié
+                        nom_objet_corrige = correct_star_name(nom_objet)
 
                         # 3) Program metadata
                         prog_id = (
@@ -159,7 +307,15 @@ for dossier in os.listdir(racine):
 
                         # 4) Construire la ligne dans l'ordre de header_final
                         #ligne = [date_part, time_part, nom_objet, prog_id]
-                        ligne = [date_part, time_display, nom_objet, prog_id]
+                        ligne = [date_part, time_display, nom_objet_corrige, prog_id]
+                        
+                        # Ajouter la colonne PSF basée sur le dictionnaire
+                        # Normaliser le nom de l'objet corrigé pour la recherche
+                        normalized_name = normalize_star_name(nom_objet_corrige)
+                        psf_key = (date_part, time_display, normalized_name)
+                        psf_status = psf_dict.get(psf_key, 'N/A')
+                        ligne.append(psf_status)
+                        
                         champs = [
                             'Neutral density filter (ND)',
                             'Filter 1',
@@ -174,7 +330,7 @@ for dossier in os.listdir(racine):
                             ligne.append(val)
 
                         donnees.append(ligne)
-                        print(f"[✓] {nom_objet} traité : {file}")
+                        print(f"[✓] {nom_objet_corrige} traité : {file}")
                         nb_ok += 1
                         found_fits = True
                         break
@@ -205,7 +361,7 @@ for ligne in donnees:
 # === En-têtes dans le bon ordre ===
 header_final = [
     'Date', 'Time', 'Target',
-    'Program ID',
+    'Program ID', 'Dedicated PSF',
     'ND', 'Filter 1', 'Filter 2', 'Seeing', 'Airmass'
 ]
 # === Écriture CSV ===
@@ -250,7 +406,8 @@ latex_table += "\\hline\n"
 # Lignes de données
 for _, row in df.iterrows():
     # On échappe les underscores manuellement (sécurité)
-    line = " & ".join(str(val).replace('_', '\\_') for val in row.tolist()) + " \\\\\n"
+    # Remplacer 'nan' par chaîne vide pour la colonne Date
+    line = " & ".join(str(val).replace('_', '\\_').replace('nan', '') for val in row.tolist()) + " \\\\\n"
     latex_table += line
 
 latex_table += "\\hline\n\\hline\n"
@@ -270,6 +427,7 @@ french_headers = {
     'Time'          : 'Heure',
     'Program ID'    : 'ID Programme',
     'Target'        : 'Cible',
+    'Dedicated PSF' : 'PSF Dédiée',
     'ND'            : 'Filtre ND',
     'Filter 1'      : 'Filtre 1',
     'Filter 2'      : 'Filtre 2',
@@ -290,7 +448,8 @@ latex_table_fr += "\\hline\n"
 # Lignes de données (identiques)
 for _, row in df.iterrows():
     # On échappe les underscores manuellement (sécurité)
-    line = " & ".join(str(val).replace('_', '\\_') for val in row.tolist()) + " \\\\\n"
+    # Remplacer 'nan' par chaîne vide pour la colonne Date
+    line = " & ".join(str(val).replace('_', '\\_').replace('nan', '') for val in row.tolist()) + " \\\\\n"
     latex_table_fr += line
 
 latex_table_fr += "\\hline\n\\hline\n"

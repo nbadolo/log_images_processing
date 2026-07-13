@@ -42,8 +42,10 @@ from astropy.wcs import WCS
 from skimage.measure import EllipseModel
 from matplotlib.path import Path
 from matplotlib.colors import to_hex
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, MaxNLocator
+import matplotlib.patheffects as PathEffects
 from AymardPack import process_fits_image as pfi  # Pour le traitement des pixels chauds/froids
+import shutil
 
 # --- Ajout : extraction des distances depuis une table CSV ---
 def read_csv_distances(csv_path):
@@ -112,15 +114,15 @@ star_filters = {
     'DZ_Aqr':    ('both', ['V_N_R']),
     'Z_Peg':     ('both', ['V_N_R']),
     'W_Peg':     ('both', ['V_N_R']),
-    #'RT_Vir':   ('alone', ['Cnt820']),
-    'RT_Vir':   ('alone', ['V']),
+    'RT_Vir':   ('alone', ['Cnt820']),
+    #'RT_Vir':   ('alone', ['V']),
     'RX_Lep':   ('alone', ['CntHa']),
     'Beta_Gru': ('both', ['V_N_R']), 
     'T_Mic':    ('both', ['V_N_R']),
     'R_Dor':    ('both',  ['Cnt820_Cnt748']),
     'AK_Hya':   ('alone', ['N_R']),
     'R_Leo':    ('both', ['V_Cnt748']),
-    # 'BK_Vir':   ('alone', ['Cnt820']),
+    #'BK_Vir':   ('alone', ['Cnt820']),
     'BK_Vir':   ('alone', ['V']),
     'T_Cet':    ('both',  ['CntHa_B_Ha']),
     'U_Del':    ('alone', ['CntHa']),
@@ -170,10 +172,10 @@ star_specific_filter = {
     'RX_Lep':   'CntHa',
     'Beta_Gru': 'V',
     'T_Mic':    'N_R',
-    'R_Dor':    'Cnt820',
+    'R_Dor':    'Cnt748',
     'AK_Hya':   'N_R',
     'R_Leo':    'V',
-    # 'BK_Vir':   'Cnt820',
+    #'BK_Vir':   'Cnt820',
     'BK_Vir':   'V',
     'T_Cet':    'B_Ha',
     'U_Del':    'CntHa',
@@ -212,17 +214,17 @@ all_resolved = clearly_resolved + marginally_resolved
 ## les structures particulières
 bipolar = [
     "AK_Hya", "R_Hya", "U_Her", "S_Pav", "W_Aql", "R_Crt", 
-    "V_PsA", "SW_Col",  "SW_Vir", "W_Hya", "L02_Pup", "W_Peg"
+    "V_PsA", "SW_Col",  "SW_Vir", "W_Hya", "L02_Pup", "W_Peg", "R_Dor"
 ]
 
 spiral_arc = [
     "Mira",  "Pi.01_Gru", "GY_Aql"
 ]
 
-spherical = [
-    "R_Dor", "BK_Vir", "RT_Vir",
+# spherical = [
+#     "R_Dor", "BK_Vir", "RT_Vir",
     
-]
+# ]
 
 
 
@@ -312,7 +314,15 @@ def radial_profile(image):
     radialprofile = tbin / np.maximum(nr, 1)
     return radialprofile
 
-fold_name ='BKvir_RTvir_Whya'
+def add_text_with_outline(ax, x, y, text, **kwargs):
+    """
+    Ajoute du texte sur une image avec un contour noir pour meilleure lisibilité.
+    """
+    txt = ax.text(x, y, text, **kwargs)
+    txt.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+    return txt
+
+fold_name ='large_log_+'  # Choix du dossier d'analyse : 'clearly_resolved', 'marginally_resolved', 'all_resolved', 'bipolar', 'spiral_arc', 'spherical'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log_+/'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/newly_resolved/'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/clearly_resolved/'
@@ -358,11 +368,11 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     custom_dolp_cutout_size = {
     'W_Aql': 400,
     'Mira': 260,
-    'RT_Vir': 240,
+    'RT_Vir': 240, 
     'W_Peg': 280,
     'AK_Hya': 150,
     'BK_Vir': 160,
-    'U_Her': 200,
+    'U_Her': 160,
     'W_Peg': 200,
     'W_Hya': 200,
     'R_Crt': 240,
@@ -406,19 +416,19 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 'BK_Vir': [0.012],
                 'RT_Vir': [0.012,  0.04],
                 'SW_Col': [0.015, 0.02, 0.03, 0.05],
-                'W_Peg': [0.013,0.03,0.05],
-                'U_Her': [ 0.019, 0.0386],
-                'R_Crt': [0.015,  0.04],
+                'W_Peg': [0.017,0.03,0.05],
+                'U_Her': [0.008, 0.019, 0.0386],
+                'R_Crt': [0.017,  0.04],
                 'V_PsA': [0.01, 0.02, 0.04],
                 'S_Pav': [0.0095, 0.02, 0.03, 0.04],
                 'R_Hya': [0.016, 0.03],
                 'GY_Aql': [ 0.04, 0.11],
                 'SW_Vir': [0.013, 0.03, 0.05, 0.07],
-                'Pi.01_Gru': [ 0.04, 0.06, 0.1],
+                'Pi.01_Gru': [ 0.045, 0.06, 0.1],
                 'L02_Pup': [ 0.04, 0.1, 0.2, 0.3],
                 'R_Dor': [0.02, 0.03, 0.05, 0.07],
                 'Mira': [0.014, 0.04],
-                'W_Hya': [ 0.025, 0.049,  0.1, 0.17],
+                'W_Hya': [ 0.035, 0.049,  0.1, 0.17],
                 'V854_Cen': [0.014, 0.035, 0.04],
             
     
@@ -427,7 +437,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     custom_scale_bar = {
             'R_Dor': 5,
             'W_Hya': 2,
-            'W_Aql': 5,
+            'W_Aql': 12,
             'R_Hya': 2,
             'AK_Hya': 10,
             'R_Crt': 10,
@@ -441,7 +451,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             'W_Peg': 5,
             'GY_Aql': 2,
             'Mira': 6,
-            'R_Dor': 1,
+            'R_Dor': 2,
             'RT_Vir': 2,
             'BK_Vir': 5,
             'Alpha_Her': 4,
@@ -457,6 +467,10 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     # APPROCHE AUTOMATIQUE POUR VMAX (ACTIVABLE/DÉSACTIVABLE)
     # ============================================================================
     USE_AUTO_VMAX = False  # Mettre False pour utiliser les dictionnaires manuels
+
+    # Toggle: plot a single white circle at exactly 3 R* on the DoLP map
+    # Applies to `SW_Col` and stars in `clearly_resolved`. Set to False to disable.
+    PLOT_3RSTAR_ON_DOLP = False
     
     # --- Dictionnaires manuels (DÉSACTIVÉS si USE_AUTO_VMAX=True) ---
     # Dictionnaire pour personnaliser les limites vmin/vmax de la colorbar DoLP
@@ -532,9 +546,9 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     pix2mas = 3.4
     position = (nDim // 2, nDim // 2)
     
-    label_size_small_panel = 14
-    label_size_great_panel = 18
-    label_size = label_size_great_panel
+    label_size_small_panel = 18
+    label_size_great_panel = 26
+    label_size = label_size_small_panel
     
     # Calcul des limites en mas
     # pour l'affichage
@@ -987,16 +1001,16 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 ax1.set_facecolor('#2a2a2a')
 
             if norm_dolp is not None:
-                im1 = ax1.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', norm=norm_dolp, extent=extent_dolp, interpolation='bilinear')
+                im1 = ax1.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', norm=norm_dolp, extent=extent_dolp, interpolation='bilinear')
             else:
-                im1 = ax1.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', vmin=vmin_dolp, vmax=vmax_dolp, extent=extent_dolp, interpolation='bilinear')
+                im1 = ax1.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', vmin=vmin_dolp, vmax=vmax_dolp, extent=extent_dolp, interpolation='bilinear')
             # Niveaux de contours automatiques selon la plage DoLP
             dolp_min = np.nanmin(sub_v_dolp_display)
             dolp_max = np.nanmax(sub_v_dolp_display)
             # Personnalisation des niveaux de contours DoLP pour certaines étoiles
             
             contour_levels = custom_dolp_contours.get(star_name, np.linspace(dolp_min, dolp_max, 5))
-            cs = ax1.contour(sub_v_dolp_display, levels=contour_levels, colors='#FFCC99', linewidths=1.5, origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
+            cs = ax1.contour(sub_v_dolp_display, levels=contour_levels, colors='white', linewidths=1.5, origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
             ax1.clabel(cs, inline=True, fontsize=10, fmt='%.2f')
             # Ajout de deux cercles autour de l'étoile centrale
             # Bloc complet cercles fixes DoLP, affichage et sauvegarde
@@ -1039,7 +1053,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [20,  120]
                         linestyles = ['--',  '-.']
                     elif star_name == 'U_Her':
-                        radii_rstar = [0, 7]
+                        radii_rstar = [0, 9]
                         linestyles = ['--', '-.']
                     elif star_name == 'RT_Vir':
                         radii_rstar = [0,  5]
@@ -1054,13 +1068,13 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [3, 21]
                         linestyles = ['--', '-.']
                     elif star_name == 'W_Hya':
-                        radii_rstar = [0,1.05]
+                        radii_rstar = [1.05, 5]
                         linestyles = ['--', '-.']
                     elif star_name == 'Mira':
                         radii_rstar = [10, 15]
                         linestyles = ['--', '-.']
                     elif star_name == 'R_Dor':
-                        radii_rstar = [0, 4.5]
+                        radii_rstar = [1, 4.5]
                         linestyles = ['--', '-.']
                     elif star_name == 'R_Crt':
                         radii_rstar = [0, 40]
@@ -1084,7 +1098,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [1.2, 16.5]
                         linestyles = ['--', '-.']
                     elif star_name == 'Pi.01_Gru':
-                        radii_rstar = [3.5, 12]
+                        radii_rstar = [3.5, 10.5]
                         linestyles = ['--', '-.']
                     elif star_name == 'L02_Pup':
                         radii_rstar = [3, 25]
@@ -1102,7 +1116,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [20, 120]
                         linestyles = ['--', '-.']
                     elif star_name == 'U_Her':
-                        radii_rstar = [0, 7]
+                        radii_rstar = [0, 8]
                         linestyles = ['--', '-.']
                     elif star_name == 'RT_Vir':
                         radii_rstar = [0, 5]
@@ -1117,13 +1131,13 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                         radii_rstar = [3, 21]
                         linestyles = ['--', '-.']
                     elif star_name == 'W_Hya':
-                        radii_rstar = [0, 1.05]
+                        radii_rstar = [1.05, 8]
                         linestyles = ['--', '-.']
                     elif star_name == 'Mira':
                         radii_rstar = [0, 10]
                         linestyles = ['--', '-.']
                     elif star_name == 'R_Dor':
-                        radii_rstar = [3, 4.5]
+                        radii_rstar = [1, 4.5]
                         linestyles = ['--', '-.']
                     elif star_name == 'R_Crt':
                         radii_rstar = [0, 40]
@@ -1146,8 +1160,26 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 radii_mas = [r * radius_stellar_mas for r in radii_rstar]
                 circles = [Circle((center_x, center_y), r_mas, edgecolor='cyan', facecolor='none', lw=2, linestyle=ls)
                            for r_mas, ls in zip(radii_mas, linestyles)]
-                # for circ in circles:
-                #     ax1.add_patch(circ)
+                # Choice: Plot either 3R* circle OR personalized circles
+                try:
+                    if PLOT_3RSTAR_ON_DOLP and radius_stellar_mas is not None and radius_stellar_mas > 0:
+                        # Apply to SW_Col and stars listed in clearly_resolved
+                        if (star_name == 'SW_Col') or (star_name in clearly_resolved):
+                            circle_3R_mas = 3.0 * radius_stellar_mas
+                            # Styled circle for presentation: dash-dot white line with black outline
+                            circ3 = Circle((center_x, center_y), circle_3R_mas, edgecolor='cyan', facecolor='none', lw=4, linestyle='-.', zorder=5)
+                            try:
+                                circ3.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                            except Exception:
+                                pass
+                            ax1.add_patch(circ3)
+                    else:
+                        # Plot personalized circles instead when 3R* is disabled
+                        for circ in circles:
+                            ax1.add_patch(circ)
+                except Exception:
+                    # Defensive: if radius not available or other error, skip drawing
+                    pass
                 legend_unit = 'R$_\star$'
                 # === Calcul, affichage et sauvegarde du rayon du grand cercle ===
                 grand_rstar = max(radii_rstar) if radii_rstar else None
@@ -1186,7 +1218,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 x_bar_axes = 0.90 - bar_length_axes  # fin à 0.98
                 y_bar_axes = 0.04  # bas
                 ax1.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax1.transAxes, solid_capstyle='butt')
-                ax1.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=14, ha='center', va='bottom',  transform=ax1.transAxes)
+                ax1.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=label_size, ha='center', va='bottom',  transform=ax1.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             else:
                 # Si la distance ou le rayon stellaire est manquant, trace une barre d'échelle de secours en mas
                 print(f"⚠️ Distance ou rayon stellaire non trouvés pour l'étoile {star_name}, barre d'échelle en R* non tracée. Affichage d'une barre de secours en mas.")
@@ -1197,25 +1229,25 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                     x_bar_axes = 0.90 - bar_length_axes
                     y_bar_axes = 0.04
                     ax1.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax1.transAxes, solid_capstyle='butt')
-                    ax1.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=14, ha='center', va='bottom', transform=ax1.transAxes)
+                    ax1.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=label_size, ha='center', va='bottom', transform=ax1.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
                 except Exception:
                     # En cas d'erreur, se contente d'afficher le message d'avertissement
                     pass
             
 
+            # Petit panel DoLP+PI : avec labels et graduations
             if label_size == label_size_great_panel:
-                # Grand panel : graduations sans labels (inversé temporairement)
-                # ax1.set_xlabel('Relative RA (mas)', fontsize=label_size)
-                # ax1.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+                # Grand panel : graduations avec labels
+                ax1.set_xlabel('Relative RA (mas)', fontsize=label_size)
+                ax1.set_ylabel('Relative Dec (mas)', fontsize=label_size)
                 ax1.tick_params(axis='both', labelsize=label_size, width=1.2)
                 ax1.locator_params(axis='x', nbins=5)
                 ax1.locator_params(axis='y', nbins=5)
             else:
-                # Petit panel : PAS de graduations ni labels d'axes (inversé temporairement)
+                # Petit panel : avec graduations et labels d'axes
                 ax1.tick_params(axis='both', labelsize=label_size, width=1.2)
-                ax1.set_xticks([])
-                ax1.set_yticks([])
-                ax1.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+                ax1.set_xlabel('Relative RA (mas)', fontsize=label_size)
+                ax1.set_ylabel('Relative Dec (mas)', fontsize=label_size)
 
             divider1 = make_axes_locatable(ax1)
             cax1 = divider1.append_axes('right', size='5%', pad=0.03)
@@ -1239,11 +1271,17 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             cb1.ax.yaxis.set_major_formatter(FuncFormatter(mantissa_1decimal))
 
             # Affiche l'exposant en haut à droite (forcé)
-            cb1.ax.text(-2.4, 1.001, f'×1e{common_exp}', 
+            if label_size_great_panel != label_size_small_panel:
+                exp_x = -2.4 + (label_size - label_size_small_panel) * (-4.0 + 2.4) / (label_size_great_panel - label_size_small_panel)
+            else:
+                exp_x = -2.4
+            cb1.ax.yaxis.get_offset_text().set_visible(False)
+            cb1.ax.text(exp_x, 1.001, f'×1e{common_exp}', 
                             transform=cb1.ax.transAxes, 
                             fontsize=label_size, 
                             verticalalignment='bottom',
-                            horizontalalignment='left')
+                            horizontalalignment='left',
+                            clip_on=False)
             cb1.ax.yaxis.get_offset_text().set(size=label_size)
             #plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10)
             # cb1.ax.tick_params(labelsize=label_size)
@@ -1252,10 +1290,10 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             # cb1.ax.yaxis.get_offset_text().set(size=label_size)
 
             # Boîte en haut-gauche pour le nom de l'étoile
-            ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=label_size, color='white', va='top')
+            ax1.text(0.02, 0.95, f'{star_name2}', transform=ax1.transAxes, fontsize=label_size, color='white', va='top', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             
             # Boîte en bas-gauche pour le filtre
-            ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=label_size, color='white', va='bottom')
+            ax1.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax1.transAxes, fontsize=label_size, color='white', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
 
             # PI + ellipse à droite
             # im2 = ax2.imshow(
@@ -1266,7 +1304,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             # )
             im2 = ax2.imshow(
                 np.log10(sub_v + np.abs(np.min(sub_v)) + 10),
-                cmap='inferno',
+                cmap='plasma',
                 origin='lower',
                 extent=extent_panel
             )
@@ -1274,14 +1312,14 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             arrow_len = 0.03 * (x_max - x_min)
             x_arrow = x_max - 0.04 * (x_max - x_min)
             # place near the top of the panel (mirror of DoLP placement)
-            y_arrow = y_max - 0.12 * (y_max - y_min)
+            y_arrow = y_max - 0.20 * (y_max - y_min)
             # Flèche Nord (verticale vers le haut)
             ax2.arrow(x_arrow, y_arrow, 0, arrow_len, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
             # Flèche Ouest (horizontale vers la gauche)
             ax2.arrow(x_arrow, y_arrow, -arrow_len, 0, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
-            offset_label = 8
-            ax2.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom')
-            ax2.text(x_arrow - arrow_len - offset_label, y_arrow, 'E', color='white', fontsize=label_size, ha='right', va='center')
+            offset_label = 15
+            ax2.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+            ax2.text(x_arrow - arrow_len - offset_label, y_arrow, 'E', color='white', fontsize=label_size, ha='right', va='center', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             # Barre d'échelle en bas à droite du panneau PI
             try:
                 if distance_star_pc is not None and radius_star_rsun is not None and radius_star_rsun > 0 and distance_star_pc > 0:
@@ -1299,7 +1337,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                     x_bar_axes = 0.90 - bar_length_axes
                     y_bar_axes = 0.04
                     ax2.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax2.transAxes, solid_capstyle='butt')
-                    ax2.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{pi_scale_val_panel:.0f}{legend_unit}', color='white', fontsize=14, ha='center', va='bottom', transform=ax2.transAxes)
+                    ax2.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{pi_scale_val_panel:.0f}{legend_unit}', color='white', fontsize=label_size, ha='center', va='bottom', transform=ax2.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
                 else:
                     # Barre de secours en mas
                     fallback_scale_mas = (nSubDim / 10.0) * pix2mas
@@ -1307,25 +1345,29 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                     x_bar_axes = 0.90 - bar_length_axes
                     y_bar_axes = 0.04
                     ax2.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax2.transAxes, solid_capstyle='butt')
-                    ax2.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=14, ha='center', va='bottom', transform=ax2.transAxes)
+                    ax2.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=label_size, ha='center', va='bottom', transform=ax2.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             except Exception:
                 pass
-            if label_size == label_size_great_panel:
-                # Grand panel : graduations sans labels (inversé temporairement)
-                # ax2.set_xlabel('Relative RA (mas)', fontsize=label_size)
-                # ax2.set_ylabel('Relative Dec (mas)', fontsize=label_size)
-                ax2.tick_params(axis='both', labelsize=label_size, width=1.2)
-                ax2.locator_params(axis='x', nbins=5)
-                ax2.locator_params(axis='y', nbins=5)
-            else:
-                # Petit panel : PAS de graduations ni labels d'axes (inversé temporairement)
-                ax2.tick_params(axis='both', labelsize=label_size, width=1.2)
-                ax2.locator_params(axis='x', nbins=5)
-                ax2.locator_params(axis='y', nbins=5)
-                ax2.axes.yaxis.set_ticklabels([])
-                ax2.set_xticks([])
-                ax2.set_yticks([])
-                ax2.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+            # Petit panel DoLP+PI : PAS de labels ni graduations
+            # if label_size == label_size_great_panel:
+            #     # Grand panel : graduations sans labels (inversé temporairement)
+            #     # ax2.set_xlabel('Relative RA (mas)', fontsize=label_size)
+            #     # ax2.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+            #     ax2.tick_params(axis='both', labelsize=label_size, width=1.2)
+            #     ax2.locator_params(axis='x', nbins=5)
+            #     ax2.locator_params(axis='y', nbins=5)
+            # else:
+            #     # Petit panel : PAS de graduations ni labels d'axes (inversé temporairement)
+            #     ax2.tick_params(axis='both', labelsize=label_size, width=1.2)
+            #     ax2.locator_params(axis='x', nbins=5)
+            #     ax2.locator_params(axis='y', nbins=5)
+            #     ax2.axes.yaxis.set_ticklabels([])
+            #     ax2.set_xticks([])
+            #     ax2.set_yticks([])
+            #     ax2.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+            ax2.set_xticks([])
+            ax2.set_yticks([])
+            ax2.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
 
             divider2 = make_axes_locatable(ax2)
             cax2 = divider2.append_axes('right', size='5%', pad=0.03)
@@ -1334,8 +1376,8 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             cb2.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.1f}"))
             #ax2.plot(x_contour_mas, y_contour_mas, color='cyan', linewidth=2, linestyle='--')
             ax2.scatter([x_centroid_mas], [y_centroid_mas], color='red', marker='x')
-            ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=label_size, color='white', va='top')
-            ax2.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax2.transAxes, fontsize=label_size, color='white', va='bottom')
+            ax2.text(0.02, 0.95, f'{star_name2}', transform=ax2.transAxes, fontsize=label_size, color='white', va='top', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+            ax2.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax2.transAxes, fontsize=label_size, color='white', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
 
             plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10, wspace=0.15)
             fig_panel_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_PI_DoLP_panel'
@@ -1360,6 +1402,29 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                     print(f"Panel déjà présent pour {star_name} [{fltr_arr[z]}], non sauvegardé.", flush=True)
                 if fig_panel is not None:
                     plt.close(fig_panel)
+                # === Export CDS : copier et renommer les fichiers DoLP et PI réduits pour l'étoile + filtre spécifique ===
+                try:
+                    cds_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/CDS_export'
+                    os.makedirs(cds_dir, exist_ok=True)
+                    def _safe_fname(s):
+                        return re.sub(r'[^0-9a-zA-Z]+', '_', str(s).lower()).strip('_')
+                    safe_star = _safe_fname(star_name)
+                    src_dolp = file_DOLP_star
+                    src_pi = file_PI_star
+                    dst_dolp = os.path.join(cds_dir, f"{safe_star}_dolp.fits")
+                    dst_pil = os.path.join(cds_dir, f"{safe_star}_pil.fits")
+                    if os.path.exists(src_dolp):
+                        shutil.copy2(src_dolp, dst_dolp)
+                        print(f"Copié DoLP → {dst_dolp}", flush=True)
+                    else:
+                        print(f"⚠️ Source DoLP manquante: {src_dolp}", flush=True)
+                    if os.path.exists(src_pi):
+                        shutil.copy2(src_pi, dst_pil)
+                        print(f"Copié PI → {dst_pil}", flush=True)
+                    else:
+                        print(f"⚠️ Source PI manquante: {src_pi}", flush=True)
+                except Exception as e:
+                    print(f"⚠️ Erreur copie CDS pour {star_name}: {e}", flush=True)
             else:
                 if fig_panel is not None:
                     plt.close(fig_panel)
@@ -1375,22 +1440,36 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 ax_dolp.set_facecolor('#2a2a2a')
             
             if norm_dolp is not None:
-                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', norm=norm_dolp, 
+                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', norm=norm_dolp, 
                                         extent=extent_dolp, interpolation='bilinear')
             else:
-                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='inferno', origin='lower', vmin=vmin_dolp, 
+                im_dolp = ax_dolp.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', vmin=vmin_dolp, 
                                         vmax=vmax_dolp, extent=extent_dolp, interpolation='bilinear')
             # Pour les contours, utiliser les vraies valeurs min/max de l'image (pas les limites de la colorbar)
             dolp_min_real = np.nanmin(sub_v_dolp_display)
             dolp_max_real = np.nanmax(sub_v_dolp_display)
             contour_levels = custom_dolp_contours.get(star_name, np.linspace(dolp_min_real, dolp_max_real, 5))
-            cs_dolp = ax_dolp.contour(sub_v_dolp_display, levels=contour_levels, colors='#FFCC99', linewidths=1., origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
+            cs_dolp = ax_dolp.contour(sub_v_dolp_display, levels=contour_levels, colors='white', linewidths=1., origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
             ax_dolp.clabel(cs_dolp, inline=True, fontsize=10, fmt='%.2f')
             
             # Ajout des cercles comme dans le panel
-            for r_mas, ls in zip(radii_mas, linestyles):
-                circ_dolp = Circle((center_x, center_y), r_mas, edgecolor='cyan', facecolor='none', lw=2, linestyle=ls)
-                ax_dolp.add_patch(circ_dolp)
+            try:
+                if PLOT_3RSTAR_ON_DOLP and 'radius_stellar_mas' in locals() and radius_stellar_mas is not None and radius_stellar_mas > 0:
+                    # Draw only a single white circle at exactly 3 R* (thicker line)
+                    circle_3R_mas = 3.0 * radius_stellar_mas
+                    circ_dolp = Circle((center_x, center_y), circle_3R_mas, edgecolor='cyan', facecolor='none', lw=4, linestyle='-.', zorder=5)
+                    try:
+                        circ_dolp.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                    except Exception:
+                        pass
+                    ax_dolp.add_patch(circ_dolp)
+                else:
+                    for r_mas, ls in zip(radii_mas, linestyles):
+                        circ_dolp = Circle((center_x, center_y), r_mas, edgecolor='cyan', facecolor='none', lw=2, linestyle=ls)
+                        ax_dolp.add_patch(circ_dolp)
+            except Exception:
+                # If something goes wrong (missing values), fallback to adding nothing
+                pass
             # Ajout du centroïde (croix rouge) sur la figure DoLP isolée
             ax_dolp.scatter([center_x], [center_y], color='red', marker='x', s=80, zorder=10)
             # Barre d'échelle en R* (identique au panel)
@@ -1403,50 +1482,43 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 radius_stellar_mas = radius_star_rad * 206265 * 1000
                 scale_mas = scale_val * radius_stellar_mas
                 legend_unit = 'R$_\star$'
-                bar_length_axes = scale_mas / (x_max - x_min)
+                bar_length_axes = scale_mas / (x_max_DOLP - x_min_DOLP)
                 x_bar_axes = 0.90 - bar_length_axes
                 y_bar_axes = 0.04
                 ax_dolp.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax_dolp.transAxes, solid_capstyle='butt')
-                ax_dolp.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=14, ha='center', va='bottom',  transform=ax_dolp.transAxes)
+                ax_dolp.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=label_size, ha='center', va='bottom',  transform=ax_dolp.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             else:
                 # Barre de secours en mas si pas de distance/rayon
                 try:
-                    fallback_scale_mas = (nSubDim / 10.0) * pix2mas
-                    bar_length_axes = fallback_scale_mas / (x_max - x_min)
+                    fallback_scale_mas = (nSubDim_DOLP / 10.0) * pix2mas
+                    bar_length_axes = fallback_scale_mas / (x_max_DOLP - x_min_DOLP)
                     x_bar_axes = 0.90 - bar_length_axes
                     y_bar_axes = 0.04
                     ax_dolp.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax_dolp.transAxes, solid_capstyle='butt')
-                    ax_dolp.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=14, ha='center', va='bottom', transform=ax_dolp.transAxes)
+                    ax_dolp.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=label_size, ha='center', va='bottom', transform=ax_dolp.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
                 except Exception:
                     pass
             # Flèches N-W en haut à droite (identique au panel)
             arrow_len = 0.04 * (x_max_DOLP - x_min_DOLP)
             x_arrow = x_max_DOLP - 0.04 * (x_max_DOLP - x_min_DOLP)# vers la gauche
-            y_arrow = y_max_DOLP - 0.12 * (y_max_DOLP - y_min_DOLP)# vers le bas
+            y_arrow = y_max_DOLP - 0.17 * (y_max_DOLP - y_min_DOLP)# vers le bas
             ax_dolp.arrow(x_arrow, y_arrow, 0, arrow_len, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
             ax_dolp.arrow(x_arrow, y_arrow, -arrow_len, 0, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
-            offset_label = 8
-            ax_dolp.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom')
-            ax_dolp.text(x_arrow - arrow_len - offset_label, y_arrow, 'E', color='white', fontsize=label_size, ha='right', va='center')
-            if label_size == label_size_great_panel:
-                # Grand panel : graduations sans labels (inversé temporairement)
-                # ax_dolp.set_xlabel('Relative RA (mas)', fontsize=label_size)
-                # ax_dolp.set_ylabel('Relative Dec (mas)', fontsize=label_size)
-                ax_dolp.tick_params(axis='both', labelsize=label_size, width=1.2)
-                ax_dolp.locator_params(axis='x', nbins=5)
-                ax_dolp.locator_params(axis='y', nbins=5)
-            else:
-                # Petit panel : PAS de graduations ni labels d'axes (inversé temporairement)
-                ax_dolp.tick_params(axis='both', labelsize=label_size, width=1.2)
-                ax_dolp.set_xticks([])
-                ax_dolp.set_yticks([])
-                ax_dolp.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+            offset_label = 15
+            ax_dolp.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+            ax_dolp.text(x_arrow - arrow_len - offset_label, y_arrow, 'E', color='white', fontsize=label_size, ha='right', va='center', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+            # Carte DoLP seule : avec labels et graduations
+            ax_dolp.set_xlabel('Relative RA (mas)', fontsize=label_size)
+            ax_dolp.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+            ax_dolp.tick_params(axis='both', labelsize=label_size, width=1.2)
+            ax_dolp.locator_params(axis='x', nbins=5)
+            ax_dolp.locator_params(axis='y', nbins=5)
             
             # Boîte en haut-gauche pour le nom de l'étoile (figure DoLP seule)
-            ax_dolp.text(0.02, 0.95, f'{star_name2}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='top')
+            ax_dolp.text(0.02, 0.95, f'{star_name2}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='top', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             
             # Boîte en bas-gauche pour le filtre (figure DoLP seule)
-            ax_dolp.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='bottom')
+            ax_dolp.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax_dolp.transAxes, fontsize=label_size, color='white', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             
             # ax_dolp.set_xticks([])
             # ax_dolp.set_yticks([])
@@ -1479,11 +1551,17 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             cb_dolp.ax.yaxis.set_major_formatter(FuncFormatter(mantissa_1decimal))
 
             # Affiche l'exposant en haut à droite (forcé)
-            cb_dolp.ax.text(-2.4, 1.001, f'×1e{common_exp}', 
+            if label_size_great_panel != label_size_small_panel:
+                exp_x = -2.4 + (label_size - label_size_small_panel) * (-4.0 + 2.4) / (label_size_great_panel - label_size_small_panel)
+            else:
+                exp_x = -2.4
+            cb_dolp.ax.yaxis.get_offset_text().set_visible(False)
+            cb_dolp.ax.text(exp_x, 1.001, f'×1e{common_exp}', 
                 transform=cb_dolp.ax.transAxes, 
                 fontsize=label_size, 
                 verticalalignment='bottom',
-                horizontalalignment='left')
+                horizontalalignment='left',
+                clip_on=False)
             
             cb_dolp.ax.yaxis.get_offset_text().set(size=label_size)
             plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10)
@@ -1496,6 +1574,296 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 plt.savefig(os.path.join(outdir, fig_dolp_name + '.eps'), format='eps', dpi=300, bbox_inches='tight')
             plt.savefig(os.path.join(outdir_dolp_only, fig_dolp_name + '.png'), dpi=300, bbox_inches='tight')
 
+            # === Figure PI/I pour BK_Vir et RT_Vir (comparaison avec DoLP) ===
+            if star_name in ['BK_Vir', 'RT_Vir']:
+                fig_pi_over_i, ax_pi_over_i = plt.subplots(1, 1, figsize=(6, 5))
+                
+                # Calculer PI/I sur la grande découpe (comme DoLP)
+                cutout_I_large = Cutout2D(I_z, position=position, size=size_DOLP)
+                sub_v_I_large = cutout_I_large.data.astype(float)
+                
+                # Découpe PI sur la même taille
+                cutout_PI_large = Cutout2D(intensity, position=position, size=size_DOLP)
+                sub_v_PI_large = cutout_PI_large.data.astype(float)
+                
+                # Calcul PI/I
+                eps = 1e-12
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    pi_over_i = sub_v_PI_large / (sub_v_I_large + eps)
+                    pi_over_i[~np.isfinite(pi_over_i)] = 0.0
+                
+                # Affichage avec les mêmes paramètres que DoLP
+                if USE_AUTO_VMAX:
+                    from scipy.ndimage import gaussian_filter
+                    center = size_DOLP[0] // 2
+                    y_grid, x_grid = np.ogrid[:size_DOLP[0], :size_DOLP[1]]
+                    r_grid = np.sqrt((x_grid - center)**2 + (y_grid - center)**2)
+                    r_max = size_DOLP[0] // 2
+                    mask_bruit = (r_grid > 0.7 * r_max) & (r_grid < 0.9 * r_max)
+                    pixels_bruit = pi_over_i[mask_bruit]
+                    median_bruit = np.nanmedian(pixels_bruit)
+                    mad_bruit = np.nanmedian(np.abs(pixels_bruit - median_bruit))
+                    sigma_bruit = 1.4826 * mad_bruit
+                    seuil_signal = median_bruit + 1 * sigma_bruit
+                    pi_over_i_smooth = gaussian_filter(pi_over_i, sigma=1.0)
+                    pi_over_i_clean = pi_over_i_smooth.copy()
+                    pi_over_i_clean[pi_over_i_clean < seuil_signal] = np.nan
+                    pixels_signal = pi_over_i_clean[~np.isnan(pi_over_i_clean)]
+                    if len(pixels_signal) > 0:
+                        vmax_pi_i = np.nanpercentile(pixels_signal, 97)
+                    else:
+                        vmax_pi_i = np.nanpercentile(pi_over_i, 97)
+                    vmin_pi_i = 0
+                    pi_over_i_display = pi_over_i_clean
+                    ax_pi_over_i.set_facecolor('#2a2a2a')
+                else:
+                    vmin_pi_i = 0
+                    vmax_pi_i = np.nanpercentile(pi_over_i, 97)
+                    pi_over_i_display = pi_over_i
+                
+                im_pi_i = ax_pi_over_i.imshow(pi_over_i_display, cmap='plasma', origin='lower', 
+                                              vmin=vmin_pi_i, vmax=vmax_pi_i, extent=extent_dolp, interpolation='bilinear')
+                
+                # Contours
+                pi_i_min = np.nanmin(pi_over_i_display)
+                pi_i_max = np.nanmax(pi_over_i_display)
+                contour_levels_pi_i = np.linspace(pi_i_min, pi_i_max, 5)
+                cs_pi_i = ax_pi_over_i.contour(pi_over_i_display, levels=contour_levels_pi_i, colors='white', 
+                                               linewidths=1., origin='lower', extent=[x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP])
+                ax_pi_over_i.clabel(cs_pi_i, inline=True, fontsize=10, fmt='%.2f')
+                
+                # Flèches N-E
+                arrow_len = 0.04 * (x_max_DOLP - x_min_DOLP)
+                x_arrow = x_max_DOLP - 0.04 * (x_max_DOLP - x_min_DOLP)
+                y_arrow = y_max_DOLP - 0.17 * (y_max_DOLP - y_min_DOLP)
+                ax_pi_over_i.arrow(x_arrow, y_arrow, 0, arrow_len, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
+                ax_pi_over_i.arrow(x_arrow, y_arrow, -arrow_len, 0, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
+                offset_label = 0
+                ax_pi_over_i.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+                ax_pi_over_i.text(x_arrow - arrow_len - offset_label, y_arrow, 'E', color='white', fontsize=label_size, ha='right', va='center', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+                
+                # Barre d'échelle
+                if distance_star_pc is not None and radius_star_rsun is not None and radius_star_rsun > 0 and distance_star_pc > 0:
+                    # Pour PI/I, utiliser la même valeur de scale que dans le panneau PI du grand plot (0.5 * scale_val)
+                    scale_val_base = custom_scale_bar.get(star_name, 10)
+                    scale_val = 0.5 * scale_val_base  # Cohérent avec le panneau PI de la figure combinée
+                    R_sun_cm = 6.957e10
+                    radius_star_cm = radius_star_rsun * R_sun_cm
+                    distance_star_cm = distance_star_pc * 3.0857e18
+                    radius_star_rad = radius_star_cm / distance_star_cm
+                    radius_stellar_mas = radius_star_rad * 206265 * 1000
+                    scale_mas = scale_val * radius_stellar_mas
+                    legend_unit = 'R$_\\star$'
+                    bar_length_axes = scale_mas / (x_max - x_min)
+                    x_bar_axes = 0.90 - bar_length_axes
+                    y_bar_axes = 0.04
+                    ax_pi_over_i.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax_pi_over_i.transAxes, solid_capstyle='butt')
+                    ax_pi_over_i.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.1f}{legend_unit}', color='white', fontsize=label_size, ha='center', va='bottom', transform=ax_pi_over_i.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+                
+                # Labels et ticks
+                if label_size == label_size_great_panel:
+                    ax_pi_over_i.tick_params(axis='both', labelsize=label_size, width=1.2)
+                    ax_pi_over_i.locator_params(axis='x', nbins=5)
+                    ax_pi_over_i.locator_params(axis='y', nbins=5)
+                else:
+                    ax_pi_over_i.tick_params(axis='both', labelsize=label_size, width=1.2)
+                    ax_pi_over_i.set_xticks([])
+                    ax_pi_over_i.set_yticks([])
+                    ax_pi_over_i.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+                
+                ax_pi_over_i.text(0.02, 0.95, f'{star_name2}', transform=ax_pi_over_i.transAxes, fontsize=label_size, color='white', va='top', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+                ax_pi_over_i.text(0.02, 0.02, f'{fltr_arr[z]} (PI/I)', transform=ax_pi_over_i.transAxes, fontsize=label_size, color='white', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+                
+                # Colorbar
+                divider_pi_i = make_axes_locatable(ax_pi_over_i)
+                cax_pi_i = divider_pi_i.append_axes('right', size='5%', pad=0.03)
+                cb_pi_i = fig_pi_over_i.colorbar(im_pi_i, cax=cax_pi_i, orientation='vertical')
+                cb_pi_i.ax.tick_params(labelsize=label_size)
+                vmin_cb, vmax_cb = cb_pi_i.vmin, cb_pi_i.vmax
+                if vmax_cb != 0:
+                    common_exp_pi_i = int(np.floor(np.log10(np.abs(vmax_cb))))
+                else:
+                    common_exp_pi_i = 0
+                def mantissa_1decimal_pi_i(x, pos):
+                    if x == 0:
+                        return ''
+                    mantissa = x / (10 ** common_exp_pi_i)
+                    return f'{mantissa:.1f}'
+                cb_pi_i.ax.yaxis.set_major_formatter(FuncFormatter(mantissa_1decimal_pi_i))
+                cb_pi_i.ax.text(-2.4, 1.001, f'×1e{common_exp_pi_i}', transform=cb_pi_i.ax.transAxes, 
+                               fontsize=label_size, verticalalignment='bottom', horizontalalignment='left')
+                
+                plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10)
+                fig_pi_i_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_PI_over_I'
+                plt.savefig(os.path.join(outdir, fig_pi_i_name + '.png'), dpi=300, bbox_inches='tight')
+                plt.savefig(os.path.join(outdir, fig_pi_i_name + '.pdf'), dpi=300, bbox_inches='tight')
+                plt.savefig(os.path.join(outdir_dolp_only, fig_pi_i_name + '.png'), dpi=300, bbox_inches='tight')
+                print(f"✓ Figure PI/I sauvegardée pour {star_name}: {fig_pi_i_name}")
+                plt.close(fig_pi_over_i)
+                
+                # === Enregistrement des profils radiaux (DoLP et PI/I) de 0 à 200 mas ===
+                # Calculer les profils radiaux
+                radial_dolp = radial_profile(sub_v_dolp_display)
+                radial_pi_i = radial_profile(pi_over_i_display)
+                
+                # Normaliser les profils radiaux (division par la valeur maximale)
+                max_dolp = np.nanmax(radial_dolp)
+                max_pi_i = np.nanmax(radial_pi_i)
+                radial_dolp_norm = radial_dolp / max_dolp if max_dolp > 0 else radial_dolp
+                radial_pi_i_norm = radial_pi_i / max_pi_i if max_pi_i > 0 else radial_pi_i
+                
+                # Convertir les pixels en mas (0 à 200 mas)
+                min_radius_mas = 0.0
+                max_radius_mas = 200.0
+                min_radius_pix = int(min_radius_mas / pix2mas)
+                max_radius_pix = int(max_radius_mas / pix2mas)
+                
+                # Créer les fichiers CSV pour les profils radiaux
+                profil_dolp_csv = os.path.join(outdir, f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_DoLP_radial_profile.csv')
+                profil_pi_i_csv = os.path.join(outdir, f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_PI_over_I_radial_profile.csv')
+                
+                # Écrire le profil DoLP normalisé
+                with open(profil_dolp_csv, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(['Radius_pix', 'Radius_mas', 'DoLP_Value_Normalized'])
+                    for pix in range(min_radius_pix, min(max_radius_pix, len(radial_dolp_norm))):
+                        radius_mas = pix * pix2mas
+                        if min_radius_mas <= radius_mas <= max_radius_mas:
+                            writer.writerow([pix, f'{radius_mas:.3f}', f'{radial_dolp_norm[pix]:.6f}'])
+                
+                # Écrire le profil PI/I normalisé
+                with open(profil_pi_i_csv, 'w', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(['Radius_pix', 'Radius_mas', 'PI_over_I_Value_Normalized'])
+                    for pix in range(min_radius_pix, min(max_radius_pix, len(radial_pi_i_norm))):
+                        radius_mas = pix * pix2mas
+                        if min_radius_mas <= radius_mas <= max_radius_mas:
+                            writer.writerow([pix, f'{radius_mas:.3f}', f'{radial_pi_i_norm[pix]:.6f}'])
+                
+                print(f"✓ Profils radiaux (normalisés) sauvegardés pour {star_name}:")
+                print(f"  - DoLP: {profil_dolp_csv}")
+                print(f"  - PI/I: {profil_pi_i_csv}")
+                
+                # === Création d'une figure 2x2 avec les images et profils radiaux ===
+                fig_combined = plt.figure(figsize=(14, 10))
+                gs = fig_combined.add_gridspec(2, 2, hspace=0.35, wspace=0.3)
+                
+                # Haut-gauche : Image DoLP
+                ax_img_dolp = fig_combined.add_subplot(gs[0, 0])
+                im_dolp_img = ax_img_dolp.imshow(sub_v_dolp_display, cmap='plasma', origin='lower', 
+                                                 vmin=0, vmax=np.nanpercentile(sub_v_dolp_display, 95), 
+                                                 extent=extent_dolp, interpolation='bilinear')
+                # ax_img_dolp.set_xlabel('RA (mas)', fontsize=label_size)
+                # ax_img_dolp.set_ylabel('Dec (mas)', fontsize=label_size)
+                # ax_img_dolp.tick_params(labelsize=label_size)
+                ax_img_dolp.set_xticks([])
+                ax_img_dolp.set_yticks([])
+                ax_img_dolp.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+                txt1 = ax_img_dolp.text(0.02, 0.95, f'{star_name2}', transform=ax_img_dolp.transAxes, fontsize=label_size, color='white', va='top')
+                txt1.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                txt2 = ax_img_dolp.text(0.02, 0.02, f'DoLP', transform=ax_img_dolp.transAxes, fontsize=label_size, color='white', va='bottom')
+                txt2.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                txt3 = ax_img_dolp.text(0.98, 0.02, f'{fltr_arr[z]}', transform=ax_img_dolp.transAxes, fontsize=label_size, color='white', va='bottom', ha='right')
+                txt3.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                divider_dolp_img = make_axes_locatable(ax_img_dolp)
+                cax_dolp_img = divider_dolp_img.append_axes('right', size='5%', pad=0.05)
+                cbar_dolp_img = fig_combined.colorbar(im_dolp_img, cax=cax_dolp_img)
+                cbar_dolp_img.ax.tick_params(labelsize=label_size)
+                # Notation scientifique pour colorbar DoLP
+                vmin_dolp_img, vmax_dolp_img = cbar_dolp_img.vmin, cbar_dolp_img.vmax
+                if vmax_dolp_img != 0:
+                    exp_dolp_img = int(np.floor(np.log10(np.abs(vmax_dolp_img))))
+                else:
+                    exp_dolp_img = 0
+                def fmt_dolp_img(x, pos):
+                    if x == 0:
+                        return ''
+                    return f'{x / (10 ** exp_dolp_img):.1f}'
+                cbar_dolp_img.ax.yaxis.set_major_formatter(FuncFormatter(fmt_dolp_img))
+                if label_size_great_panel != label_size_small_panel:
+                    exp_x = -2.4 + (label_size - label_size_small_panel) * (-4.0 + 2.4) / (label_size_great_panel - label_size_small_panel)
+                else:
+                    exp_x = -2.4
+                cbar_dolp_img.ax.yaxis.get_offset_text().set_visible(False)  # Désactiver offset auto
+                cbar_dolp_img.ax.text(exp_x, 1.001, f'×1e{exp_dolp_img}', transform=cbar_dolp_img.ax.transAxes, 
+                                     fontsize=label_size, va='bottom', ha='left', clip_on=False)
+                
+                # Haut-droite : Image PI/I
+                ax_img_pi_i = fig_combined.add_subplot(gs[0, 1])
+                im_pi_i_img = ax_img_pi_i.imshow(pi_over_i_display, cmap='plasma', origin='lower', 
+                                                vmin=0, vmax=np.nanpercentile(pi_over_i_display, 95), 
+                                                extent=extent_dolp, interpolation='bilinear')
+                # ax_img_pi_i.set_xlabel('RA (mas)', fontsize=label_size)
+                # ax_img_pi_i.tick_params(labelsize=label_size)
+                ax_img_pi_i.set_xticks([])
+                ax_img_pi_i.set_yticks([])
+                ax_img_pi_i.tick_params(left=False, right=False, bottom=False, top=False, labelleft=False, labelbottom=False)
+                txt4 = ax_img_pi_i.text(0.02, 0.95, f'{star_name2}', transform=ax_img_pi_i.transAxes, fontsize=label_size, color='white', va='top')
+                txt4.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                txt5 = ax_img_pi_i.text(0.02, 0.02, f'PI/I', transform=ax_img_pi_i.transAxes, fontsize=label_size, color='white', va='bottom')
+                txt5.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                txt6 = ax_img_pi_i.text(0.98, 0.02, f'{fltr_arr[z]}', transform=ax_img_pi_i.transAxes, fontsize=label_size, color='white', va='bottom', ha='right')
+                txt6.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
+                divider_pi_i_img = make_axes_locatable(ax_img_pi_i)
+                cax_pi_i_img = divider_pi_i_img.append_axes('right', size='5%', pad=0.05)
+                cbar_pi_i_img = fig_combined.colorbar(im_pi_i_img, cax=cax_pi_i_img)
+                cbar_pi_i_img.ax.tick_params(labelsize=label_size)
+                # Notation scientifique pour colorbar PI/I
+                vmin_pi_i_img, vmax_pi_i_img = cbar_pi_i_img.vmin, cbar_pi_i_img.vmax
+                if vmax_pi_i_img != 0:
+                    exp_pi_i_img = int(np.floor(np.log10(np.abs(vmax_pi_i_img))))
+                else:
+                    exp_pi_i_img = 0
+                def fmt_pi_i_img(x, pos):
+                    if x == 0:
+                        return ''
+                    return f'{x / (10 ** exp_pi_i_img):.1f}'
+                cbar_pi_i_img.ax.yaxis.set_major_formatter(FuncFormatter(fmt_pi_i_img))
+                cbar_pi_i_img.ax.yaxis.get_offset_text().set_visible(False)  # Désactiver offset auto
+                cbar_pi_i_img.ax.text(-2.4, 1.001, f'×1e{exp_pi_i_img}', transform=cbar_pi_i_img.ax.transAxes, 
+                                     fontsize=label_size, va='bottom', ha='left')
+                
+                # Axes x en mas pour les profils
+                radius_pix_range = np.arange(min_radius_pix, min(max_radius_pix, len(radial_dolp_norm)))
+                radius_mas_range = radius_pix_range * pix2mas
+                
+                # Bas-gauche : Profil DoLP normalisé
+                ax_radial_dolp = fig_combined.add_subplot(gs[1, 0])
+                # Ajouter le point (0, 1.0) au début
+                radius_mas_with_center = np.concatenate([[0], radius_mas_range])
+                radial_dolp_with_center = np.concatenate([[1.0], radial_dolp_norm[radius_pix_range]])
+                ax_radial_dolp.plot(radius_mas_with_center, radial_dolp_with_center, 'o-', color='white', linewidth=2.5, markersize=5, label='DoLP (normalized)')
+                # ax_radial_dolp.set_xlabel('Radius (mas)', fontsize=label_size)
+                # ax_radial_dolp.set_ylabel('Normalized DoLP', fontsize=label_size)
+                #ax_radial_dolp.set_title('DoLP Radial Profile', fontsize=label_size)
+                ax_radial_dolp.set_xlim([0, 200])
+                ax_radial_dolp.set_ylim([0, 1.1])
+                ax_radial_dolp.grid(True, alpha=0.3)
+                # ax_radial_dolp.tick_params(labelsize=label_size)
+                ax_radial_dolp.legend(loc='best', fontsize=label_size)
+                
+                # Bas-droite : Profil PI/I normalisé
+                ax_radial_pi_i = fig_combined.add_subplot(gs[1, 1])
+                radial_pi_i_with_center = np.concatenate([[1.0], radial_pi_i_norm[radius_pix_range]])
+                ax_radial_pi_i.plot(radius_mas_with_center, radial_pi_i_with_center, 'o-', color='white', linewidth=2.5, markersize=5, label='PI/I (normalized)')
+                # ax_radial_pi_i.set_xlabel('Radius (mas)', fontsize=label_size)
+                # ax_radial_pi_i.set_ylabel('Normalized PI/I', fontsize=label_size, loc='center')
+                ax_radial_pi_i.yaxis.set_label_position('right')
+                #ax_radial_pi_i.set_title('PI/I Radial Profile', fontsize=label_size)
+                ax_radial_pi_i.set_xlim([0, 200])
+                ax_radial_pi_i.set_ylim([0, 1.1])
+                ax_radial_pi_i.grid(True, alpha=0.3)
+                # ax_radial_pi_i.tick_params(labelsize=label_size, right=True, left=False, labelright=True, labelleft=False)
+                # ax_radial_pi_i.yaxis.tick_right()
+                ax_radial_pi_i.legend(loc='best', fontsize=label_size)
+                
+                fig_combined_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_DoLP_vs_PI_over_I'
+                fig_combined.savefig(os.path.join(outdir, fig_combined_name + '.png'), dpi=300, bbox_inches='tight')
+                fig_combined.savefig(os.path.join(outdir, fig_combined_name + '.pdf'), dpi=300, bbox_inches='tight')
+                fig_combined.savefig(os.path.join(outdir_dolp_only, fig_combined_name + '.png'), dpi=300, bbox_inches='tight')
+                print(f"✓ Figure combinée (images + profils) sauvegardée: {fig_combined_name}")
+                plt.close(fig_combined)
+
 
             # Figure PI seule avec contours et ellipse ajustée pour analyse des PA
             plt.figure(figsize=(6, 5))
@@ -1503,7 +1871,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             custom_pi_contours = {
                 'V854_Cen': [1.23, 1.275, 1.30, 1.59, 1.88, 2.00, 2.05],
                 }
-            im = ax.imshow(np.log10(sub_v + np.abs(np.min(sub_v)) + 10), cmap='inferno', origin='lower', extent=extent_small)
+            im = ax.imshow(np.log10(sub_v + np.abs(np.min(sub_v)) + 10), cmap='plasma', origin='lower', extent=extent_small)
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
             cbar = plt.colorbar(im, cax=cax)
@@ -1536,7 +1904,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                 x_bar_axes = 0.90 - bar_length_axes
                 y_bar_axes = 0.04
                 ax.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax.transAxes, solid_capstyle='butt')
-                ax.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=14, ha='center', va='bottom',  transform=ax.transAxes)
+                ax.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{scale_val:.0f}{legend_unit}', color='white', fontsize=label_size, ha='center', va='bottom',  transform=ax.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             else:
                 # Barre de secours en mas si pas de distance/rayon
                 try:
@@ -1545,7 +1913,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
                     x_bar_axes = 0.90 - bar_length_axes
                     y_bar_axes = 0.04
                     ax.plot([x_bar_axes, x_bar_axes + bar_length_axes], [y_bar_axes, y_bar_axes], color='white', lw=3, transform=ax.transAxes, solid_capstyle='butt')
-                    ax.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=14, ha='center', va='bottom', transform=ax.transAxes)
+                    ax.text(x_bar_axes + bar_length_axes/2, y_bar_axes + 0.01, f'{int(fallback_scale_mas)} mas', color='white', fontsize=label_size, ha='center', va='bottom', transform=ax.transAxes, path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
                 except Exception:
                     pass
             # Flèches N-W en haut à droite (identique au panel)
@@ -1554,9 +1922,9 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             y_arrow = y_max_DOLP - 0.05 * (y_max_DOLP - y_min_DOLP)# vers le bas
             ax.arrow(x_arrow, y_arrow, 0, arrow_len, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
             ax.arrow(x_arrow, y_arrow, -arrow_len, 0, head_width=0.02*arrow_len, head_length=0.04*arrow_len, fc='white', ec='white', lw=2)
-            offset_label = 8
-            ax.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom')
-            ax.text(x_arrow - arrow_len - offset_label, y_arrow, 'E', color='white', fontsize=label_size, ha='right', va='center')
+            offset_label = 15
+            ax.text(x_arrow, y_arrow + arrow_len + offset_label, 'N', color='white', fontsize=label_size, ha='center', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+            ax.text(x_arrow - arrow_len - offset_label, y_arrow, 'E', color='white', fontsize=label_size, ha='right', va='center', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             # appliquer le signe aux coordonnées X tracées
             x_contour_mas = x_contour_mas * x_sign
             x_centroid_mas = x_centroid_mas * x_sign
@@ -1567,8 +1935,8 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             ax.tick_params(axis='both', labelsize=label_size, width=1.2)
             ax.locator_params(axis='x', nbins=5)
             ax.locator_params(axis='y', nbins=5)
-            ax.text(0.02, 0.95, f'{star_name2}', transform=ax.transAxes, fontsize=label_size, color='white', va='top')
-            ax.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax.transAxes, fontsize=label_size, color='white', va='bottom')
+            ax.text(0.02, 0.95, f'{star_name2}', transform=ax.transAxes, fontsize=label_size, color='white', va='top', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
+            ax.text(0.02, 0.02, f'{fltr_arr[z]}', transform=ax.transAxes, fontsize=label_size, color='white', va='bottom', path_effects=[PathEffects.withStroke(linewidth=2, foreground='black')])
             try:
                 pi_offset = np.abs(np.nanmin(sub_v)) + 10.0
                 log_PI = np.log10(np.clip(sub_v + pi_offset, a_min=1e-12, a_max=None))
@@ -2197,9 +2565,10 @@ if not results_df.empty and 'Étoile' in results_df.columns:
         patch.set_edgecolor('#bbbbbb')
     median_e = hist_source_df['e'].median()
     plt.axvline(median_e, color='#D0021B', linestyle='--', linewidth=2, label=f'Median = {median_e:.2f}')
-    plt.xlabel('$e$', fontsize=14)
-    plt.ylabel('N. étoiles', fontsize=14)
+    plt.xlabel(r'$\rm \varepsilon$', fontsize=14)
+    plt.ylabel("Nombre d'étoiles", fontsize=14)
     plt.legend(fontsize=14, loc='upper right')
+    plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
     plt.tight_layout()
@@ -2226,8 +2595,9 @@ if not results_df.empty and 'Étoile' in results_df.columns:
     median_phys = hist_source_df['D_maj_UA'].median()
     plt.axvline(median_phys, color='#D0021B', linestyle='--', linewidth=2, label=f'Median = {median_phys:.1f} AU')
     plt.xlabel('$D_{maj}$ (AU)', fontsize=14)
-    plt.ylabel('N. étoiles', fontsize=14)
+    plt.ylabel("Nombre d'étoiles", fontsize=14)
     plt.legend(fontsize=14, loc='upper right')
+    plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))
     plt.xticks(fontsize=14)
     plt.yticks(fontsize=14)
     plt.tight_layout()
@@ -2335,11 +2705,12 @@ plt.axvline(median_e, color='#D0021B', linestyle ='--', linewidth=2, label=f'Med
 #         plt.text(patch.get_x() + patch.get_width()/2, val + 0.05, f'{int(val)}', ha='center', va='bottom', fontsize=12, color='#333333')
 # plt.xlabel('$e$', fontsize=14)# Anglais
 # plt.ylabel('N. stars', fontsize=14)
-plt.xlabel('$e$', fontsize=14)  # Français
-plt.ylabel('N. étoiles', fontsize=14)
+plt.xlabel(r'$\rm \varepsilon$', fontsize=14)  # Français
+plt.ylabel("Nombre d'étoiles", fontsize=14)
 #plt.title('Histogram of ellipticities\n(max diameter per star)', fontsize=17, fontweight='bold', color='#4A90E2', pad=18)
 #plt.grid(alpha=0.3, linestyle='--')
 plt.legend(fontsize=14)
+plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
 plt.tight_layout()
@@ -2363,9 +2734,10 @@ plt.axvline(median_phys, color='#D0021B', linestyle='--', linewidth=2, label=f'M
 # plt.xlabel('$D_{maj}$ (AU)', fontsize=14)# Anglais
 # plt.ylabel('N. stars', fontsize=14)
 plt.xlabel('$D_{maj}$ (AU)', fontsize=14)# Français
-plt.ylabel('N. étoiles', fontsize=14)
+plt.ylabel("Nombre d'étoiles", fontsize=14)
 #plt.title('Histogram of physical sizes\n(max diameter per star)', fontsize=16, fontweight='bold', color='#50B878', pad=16)
 plt.legend(fontsize=14)
+plt.gca().yaxis.set_major_locator(MaxNLocator(integer=True))
 plt.xticks(fontsize=14)
 plt.yticks(fontsize=14)
 plt.tight_layout()
@@ -2553,7 +2925,7 @@ def assemble_grand_panels_paginated(panel_dir, output_path_base, ncols=2, nrows=
 # os.makedirs(output_base_dolp + 'png', exist_ok=True)
 # os.makedirs(output_base_dolp + 'pdf', exist_ok=True)
 
-# assemble_grand_panels_paginated(dolp_specific_dir, output_base_dolp, ncols=4, nrows=5,
+# assemble_grand_panels_paginated(dolp_specific_dir, output_base_dolp, ncols=3, nrows=1,
 #                                 suffix='_DoLP_only.png', panel_name='DoLP_only',
 #                                 cell_size=(6, 5))
 
