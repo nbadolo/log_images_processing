@@ -322,7 +322,7 @@ def add_text_with_outline(ax, x, y, text, **kwargs):
     txt.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='black')])
     return txt
 
-fold_name ='large_log_+'  # Choix du dossier d'analyse : 'clearly_resolved', 'marginally_resolved', 'all_resolved', 'bipolar', 'spiral_arc', 'spherical'
+fold_name ='SW_Col'  # Choix du dossier d'analyse : 'clearly_resolved', 'marginally_resolved', 'all_resolved', 'bipolar', 'spiral_arc', 'spherical'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/large_log_+/'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/newly_resolved/'
 #large_log_dir = '/home/nbadolo/Bureau/Aymard/Donnees_sph/clearly_resolved/'
@@ -546,8 +546,8 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
     pix2mas = 3.4
     position = (nDim // 2, nDim // 2)
     
-    label_size_small_panel = 18
-    label_size_great_panel = 26
+    label_size_small_panel = 22
+    label_size_great_panel = 16
     label_size = label_size_small_panel
     
     # Calcul des limites en mas
@@ -701,6 +701,7 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
         hdu_I = fits.open(file_I_star)
         data_I = hdu_I[0].data
         # Affichage des informations
+        dolp_vertical_data = {}
         for z in range(n_fsize):
             fig_panel = None
             fig_dolp = None
@@ -898,26 +899,27 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             diameter_err_mas = 2 * pix2mas  # erreur simple : ±1 pixel sur chaque demi-axe
             diameter_minor_err_mas = 2 * pix2mas
             ellipticity = 1 - (b_minor / a_major)
-            # Ne garder que le filtre spécifique défini pour cette étoile
+            # Ne garder que le filtre spécifique défini pour cette étoile (mesures morphologiques uniquement)
             selected_filter = star_specific_filter.get(star_name)
-            if selected_filter and fltr_arr[z] != selected_filter:
-                continue
-            results.append({
-                'Étoile': star_name,
-                'Filtre': fltr_arr[z],
-                'D_maj_mas': diameter_mas,
-                'sigma_D_maj_mas': diameter_err_mas,
-                'D_min_mas': diameter_minor_mas,
-                'sigma_D_min_mas': diameter_minor_err_mas,
-                'b_a': b_minor / a_major,  # rapport b/a pour q dans le tableau
-                'e': ellipticity,
-                'X0_mas': x_centroid_mas,
-                'Y0_mas': y_centroid_mas,
-                'theta_deg': float((np.degrees(theta_fit)) % 180.0),
-                'Cout': best_cost,
-                'Contraste': best_threshold
-            })
-            print(f"Traitement : filtre={fltr_arr[z]}, seuil={best_threshold:.4f}, fit_cost={best_cost:.4f}")
+            if (not selected_filter) or (fltr_arr[z] == selected_filter):
+                results.append({
+                    'Étoile': star_name,
+                    'Filtre': fltr_arr[z],
+                    'D_maj_mas': diameter_mas,
+                    'sigma_D_maj_mas': diameter_err_mas,
+                    'D_min_mas': diameter_minor_mas,
+                    'sigma_D_min_mas': diameter_minor_err_mas,
+                    'b_a': b_minor / a_major,  # rapport b/a pour q dans le tableau
+                    'e': ellipticity,
+                    'X0_mas': x_centroid_mas,
+                    'Y0_mas': y_centroid_mas,
+                    'theta_deg': float((np.degrees(theta_fit)) % 180.0),
+                    'Cout': best_cost,
+                    'Contraste': best_threshold
+                })
+                print(f"Traitement : filtre={fltr_arr[z]}, seuil={best_threshold:.4f}, fit_cost={best_cost:.4f}")
+            else:
+                print(f"Filtre {fltr_arr[z]} non retenu pour la table morphologique ({selected_filter}), mais figure DoLP conservée.")
 
             # Recalcule les axes pour le champ DoLP élargi
             x_min_DOLP = -pix2mas * nSubDim_DOLP // 2
@@ -1567,12 +1569,157 @@ def log_image(folder_name, star_name, obsmod, star_specific_filter=None):
             plt.subplots_adjust(left=0.08, right=0.98, top=0.97, bottom=0.10)
             fig_dolp_name = f'{star_name}_{obsmod}_{fltr_arr[z]}_{z}_DoLP_only'
             
-            plt.savefig(os.path.join(outdir, fig_dolp_name + '.png'), dpi=300, bbox_inches='tight')
-            plt.savefig(os.path.join(outdir, fig_dolp_name + '.pdf'), dpi=300, bbox_inches='tight')
-            plt.savefig(os.path.join(f'{outdir_dolp_only}/pdf', fig_dolp_name + '.pdf'), dpi=300, bbox_inches='tight')
+            fig_dolp_png_outdir = os.path.join(outdir, fig_dolp_name + '.png')
+            fig_dolp_pdf_outdir = os.path.join(outdir, fig_dolp_name + '.pdf')
+            fig_dolp_pdf_global = os.path.join(f'{outdir_dolp_only}/pdf', fig_dolp_name + '.pdf')
+            fig_dolp_png_global = os.path.join(outdir_dolp_only, fig_dolp_name + '.png')
+
+            plt.savefig(fig_dolp_png_outdir, dpi=300, bbox_inches='tight')
+            plt.savefig(fig_dolp_pdf_outdir, dpi=300, bbox_inches='tight')
+            plt.savefig(fig_dolp_pdf_global, dpi=300, bbox_inches='tight')
             if star_name== 'V854_Cen':
                 plt.savefig(os.path.join(outdir, fig_dolp_name + '.eps'), format='eps', dpi=300, bbox_inches='tight')
-            plt.savefig(os.path.join(outdir_dolp_only, fig_dolp_name + '.png'), dpi=300, bbox_inches='tight')
+            plt.savefig(fig_dolp_png_global, dpi=300, bbox_inches='tight')
+
+            # Conserver les données DoLP V/N_R pour créer un montage vertical dédié
+            dolp_vertical_data[fltr_arr[z]] = {
+                'img': np.array(sub_v_dolp_display, copy=True),
+                'extent': [x_min_DOLP, x_max_DOLP, y_min_DOLP, y_max_DOLP],
+                'contours': np.array(custom_dolp_contours.get(star_name, contour_levels), copy=True),
+                'center_x': center_x,
+                'center_y': center_y,
+                'star': star_name2,
+            }
+
+            if ('V' in dolp_vertical_data) and ('N_R' in dolp_vertical_data):
+                try:
+                    data_v = dolp_vertical_data['V']
+                    data_nr = dolp_vertical_data['N_R']
+
+                    img_v = np.asarray(data_v['img'], dtype=float)
+                    img_nr = np.asarray(data_nr['img'], dtype=float)
+                    extent_v = data_v['extent']
+                    extent_nr = data_nr['extent']
+                    c_v = np.asarray(data_v['contours'], dtype=float)
+                    c_nr = np.asarray(data_nr['contours'], dtype=float)
+                    cx_v, cy_v = data_v['center_x'], data_v['center_y']
+                    cx_nr, cy_nr = data_nr['center_x'], data_nr['center_y']
+
+                    vals = []
+                    if np.any(np.isfinite(img_v)):
+                        vals.append(img_v[np.isfinite(img_v)])
+                    if np.any(np.isfinite(img_nr)):
+                        vals.append(img_nr[np.isfinite(img_nr)])
+                    if vals:
+                        all_vals = np.concatenate(vals)
+                        vmin_common = 0.0
+                        vmax_common = float(np.nanpercentile(all_vals, 99.0))
+                        if not np.isfinite(vmax_common) or vmax_common <= 0:
+                            vmax_common = float(np.nanmax(all_vals)) if np.any(np.isfinite(all_vals)) else 1.0
+                    else:
+                        vmin_common, vmax_common = 0.0, 1.0
+
+                    fig_vert, (axv, axnr) = plt.subplots(2, 1, figsize=(8, 14), sharex=True, sharey=True)
+                    axv.set_facecolor('#2a2a2a' if USE_AUTO_VMAX else 'black')
+                    axnr.set_facecolor('#2a2a2a' if USE_AUTO_VMAX else 'black')
+
+                    im_v = axv.imshow(img_v, cmap='plasma', origin='lower', vmin=vmin_common, vmax=vmax_common,
+                                      extent=extent_v, interpolation='bilinear')
+                    im_nr = axnr.imshow(img_nr, cmap='plasma', origin='lower', vmin=vmin_common, vmax=vmax_common,
+                                        extent=extent_nr, interpolation='bilinear')
+
+                    cs_v = axv.contour(img_v, levels=c_v, colors='white', linewidths=1.0, origin='lower', extent=extent_v)
+                    axv.clabel(cs_v, inline=True, fontsize=10, fmt='%.2f')
+                    cs_nr = axnr.contour(img_nr, levels=c_nr, colors='white', linewidths=1.0, origin='lower', extent=extent_nr)
+                    axnr.clabel(cs_nr, inline=True, fontsize=10, fmt='%.2f')
+
+                    # Pas de cercles cyan sur ce panel vertical (demande utilisateur)
+                    axv.scatter([cx_v], [cy_v], color='red', marker='x', s=80, zorder=10)
+                    axnr.scatter([cx_nr], [cy_nr], color='red', marker='x', s=80, zorder=10)
+
+                    # Show filter name at top-left instead of star name; use the same bold outlined style as the reference script
+                    add_text_with_outline(
+                        axv,
+                        0.02,
+                        0.95,
+                        'V',
+                        transform=axv.transAxes,
+                        fontsize=label_size,
+                        color='white',
+                        va='top',
+                        fontweight='bold',
+                    )
+                    add_text_with_outline(
+                        axnr,
+                        0.02,
+                        0.95,
+                        'N_R',
+                        transform=axnr.transAxes,
+                        fontsize=label_size,
+                        color='white',
+                        va='top',
+                        fontweight='bold',
+                    )
+
+                    # Set exactly three tick marks per axis (fixed values to match reference)
+                    x_ticks = np.array([-200.0, 0.0, 200.0])
+                    y_ticks = np.array([-200.0, 0.0, 200.0])
+                    for ax in (axv, axnr):
+                        ax.set_xticks(x_ticks)
+                        ax.set_yticks(y_ticks)
+
+                    # Axe X: en haut -> traits visibles, nombres cachés ; en bas -> nombres visibles
+                    axv.tick_params(axis='x', which='both', bottom=True, labelbottom=False)
+                    axnr.tick_params(axis='x', which='both', bottom=True, labelbottom=True)
+                    axv.tick_params(axis='y', labelsize=label_size)
+                    axnr.tick_params(axis='y', labelsize=label_size)
+                    axnr.tick_params(axis='x', labelsize=label_size)
+
+                    axv.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+                    axnr.set_ylabel('Relative Dec (mas)', fontsize=label_size)
+                    axnr.set_xlabel('Relative RA (mas)', fontsize=label_size)
+
+                    # Leave room on the right for a vertical colorbar spanning both panels
+                    fig_vert.subplots_adjust(hspace=0.01, left=0.08, right=0.88, top=0.92, bottom=0.08)
+
+                    # Colorbar verticale à droite, couvrant la hauteur combinée des deux axes
+                    pos_top = axv.get_position()
+                    pos_bot = axnr.get_position()
+                    y0 = min(pos_bot.y0, pos_top.y0)
+                    y1 = max(pos_bot.y1, pos_top.y1)
+                    cbar_x = pos_top.x1 + 0.01
+                    cbar_width = 0.04
+                    cbar_ax = fig_vert.add_axes([cbar_x, y0, cbar_width, y1 - y0])
+                    cbar = fig_vert.colorbar(im_nr, cax=cbar_ax, orientation='vertical')
+                    cbar.ax.tick_params(labelsize=label_size)
+                    # Add colorbar label 'DoLP'
+                    try:
+                        cbar.ax.set_ylabel('DoLP',  fontsize=label_size, rotation=90, labelpad=8)
+                    except Exception:
+                        # Fallback if set_ylabel isn't available on this backend
+                        cbar.set_label('DoLP', fontsize=label_size)
+
+                    # Format type ×1eN comme les figures DoLP (vertical)
+                    if vmax_common != 0:
+                        exp_common = int(np.floor(np.log10(np.abs(vmax_common))))
+                    else:
+                        exp_common = 0
+                    cbar.ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: '' if x == 0 else f"{x/(10**exp_common):.1f}"))
+                    # Position exponent text in figure coordinates to match reference figure exactly
+                    cbar_pos = cbar_ax.get_position()
+                    exp_x = cbar_pos.x1 - 0.005
+                    exp_y = cbar_pos.y1 + 0.005
+                    fig_vert.text(exp_x, exp_y, f'×1e{exp_common}', transform=fig_vert.transFigure,
+                                  fontsize=label_size, ha='right', va='bottom')
+
+                    vert_name = f'{star_name}_{obsmod}_V_N_R_DoLP_vertical'
+                    fig_vert.savefig(os.path.join(outdir, vert_name + '.png'), dpi=300, bbox_inches='tight')
+                    fig_vert.savefig(os.path.join(outdir, vert_name + '.pdf'), dpi=300, bbox_inches='tight')
+                    fig_vert.savefig(os.path.join(outdir_dolp_only, vert_name + '.png'), dpi=300, bbox_inches='tight')
+                    plt.close(fig_vert)
+                    print(f"✓ Montage vertical DoLP V/N_R sauvegardé: {vert_name}")
+                except Exception as exc:
+                    print(f"⚠️ Impossible de créer le montage vertical DoLP V/N_R pour {star_name}: {exc}")
 
             # === Figure PI/I pour BK_Vir et RT_Vir (comparaison avec DoLP) ===
             if star_name in ['BK_Vir', 'RT_Vir']:

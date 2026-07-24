@@ -23,9 +23,9 @@ for col in t.colnames:
     if t[col].dtype.kind in ['U', 'S']:
         t[col] = [to_nan(x) for x in t[col]]
 
-# ==============================
+# ================================
 # 3. HEADER CDS / A&A (IMPORTANT)
-# ==============================
+# ================================
 
 t.meta["TITLE"] = "Stellar, variability, mass-loss and polarimetric properties of 18 AGB stars observed with SPHERE/ZIMPOL"
 t.meta["INSTRUME"] = "VLT/SPHERE-ZIMPOL"
